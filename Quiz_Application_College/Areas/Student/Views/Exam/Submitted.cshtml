@@ -1,0 +1,13 @@
+﻿@model Quiz_Application_College.Domain.Attempt
+@{
+    ViewData["Title"] = "Submission Received";
+}
+<h2>@Model.Quiz?.Title — Submission Received</h2>
+<p>Your submission has been recorded.</p>
+
+@if (Model.Quiz?.ShowReviewOnSubmit == true)
+{
+    <a class="btn btn-primary" asp-action="Review" asp-route-attemptId="@Model.Id">View Review</a>
+}
+
+<a class="btn btn-secondary" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Back to My Quizzes</a>

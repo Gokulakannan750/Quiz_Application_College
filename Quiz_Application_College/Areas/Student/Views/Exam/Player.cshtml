@@ -1,0 +1,86 @@
+﻿@model Quiz_Application_College.ViewModels.ExamPlayerVm
+@{
+    ViewData["Title"] = "Exam Player";
+    var endTime = Model.StartedAt.AddMinutes(Model.DurationMinutes);
+}
+<h2>@Model.QuizTitle</h2>
+<div class="alert alert-secondary">
+    Attempt: <strong>@Model.AttemptId</strong><br />
+    Time left: <span id="timeLeft"></span>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="list-group mb-3" id="qNav">
+            @for (int i = 0; i < Model.Questions.Count; i++)
+            {
+                var q = Model.Questions[i];
+                <a href="#q@i" class="list-group-item list-group-item-action">
+                    Q@(i + 1)
+                </a>
+            }
+        </div>
+        <form asp-action="Submit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="attemptId" value="@Model.AttemptId" />
+            <button class="btn btn-danger w-100" type="submit" onclick="return confirm('Submit the test?');">Submit</button>
+        </form>
+    </div>
+
+    <div class="col-md-9">
+        @for (int i = 0; i < Model.Questions.Count; i++)
+        {
+            var q = Model.Questions[i];
+            <div class="card mb-3" id="q@i">
+                <div class="card-body">
+                    <h5>Q@(i + 1). @q.Text</h5>
+                    @foreach (var opt in q.Options)
+                    {
+                        var checkedAttr = (Model.Answers.TryGetValue(q.QuestionId, out var sel) && sel == opt.OptionId) ? "checked" : "";
+                        <div class="form-check">
+                            <input class="form-check-input answer"
+                                   type="radio"
+                                   name="q_@q.QuestionId"
+                                   data-question-id="@q.QuestionId"
+                                   value="@opt.OptionId"
+                                   @checkedAttr />
+                            <label class="form-check-label">@opt.Text</label>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    const attemptId = "@Model.AttemptId";
+    const endAt = new Date("@endTime.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:ss")");
+
+    function tick() {
+      const now = new Date();
+      const ms = endAt - now;
+      if (ms <= 0) { document.getElementById('timeLeft').innerText = "00:00"; document.forms[0].submit(); return; }
+      const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000).toString().padStart(2,"0");
+      document.getElementById('timeLeft').innerText = m + ":" + s;
+    }
+    setInterval(tick, 1000); tick();
+
+    async function save(qid, oid) {
+      try {
+        await fetch("@Url.Action("SaveAnswer", "Exam", new { area = "Student" })", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attemptId: attemptId, questionId: qid, optionId: oid })
+        });
+      } catch (e) { console.warn("save failed", e); }
+    }
+
+    document.querySelectorAll(".answer").forEach(el => {
+      el.addEventListener("change", e => {
+        const qid = e.target.getAttribute("data-question-id");
+        const oid = e.target.value;
+        save(qid, oid);
+      });
+    });
+</script>

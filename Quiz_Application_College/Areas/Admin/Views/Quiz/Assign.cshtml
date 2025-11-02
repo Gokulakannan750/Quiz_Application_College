@@ -1,0 +1,26 @@
+﻿@{
+    ViewData["Title"] = "Assign Questions";
+    var quiz = (Quiz_Application_College.Domain.Quiz)ViewBag.Quiz;
+    var all = (IEnumerable<dynamic>)ViewBag.AllQuestions;
+    var selected = new HashSet<Guid>(((IEnumerable<Guid>)ViewBag.Selected));
+}
+<h2>Assign Questions — @quiz.Title</h2>
+<form asp-action="Assign" method="post" asp-route-id="@quiz.Id">
+    <div class="mb-3">
+        <div class="form-text">Tick the questions to include in this quiz. Order will follow the list order.</div>
+    </div>
+
+    <div class="list-group mb-3">
+        @foreach (var q in all)
+        {
+            bool isSel = selected.Contains((Guid)q.Id);
+            <label class="list-group-item">
+                <input class="form-check-input me-1" type="checkbox" name="questionIds" value="@q.Id" @(isSel ? "checked" : "") />
+                @q.Text
+            </label>
+        }
+    </div>
+
+    <button class="btn btn-success">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Back</a>
+</form>

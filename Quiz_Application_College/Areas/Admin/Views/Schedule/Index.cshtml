@@ -1,0 +1,41 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.QuizSchedule>
+@{
+    ViewData["Title"] = "Schedules";
+    var hasItems = Model != null && Model.Any();
+}
+<h2>Schedules</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Create Schedule</a>
+</p>
+
+@if (!hasItems)
+{
+    <div class="alert alert-info">
+        <strong>No schedules yet.</strong> Create a quiz first, then click <a asp-action="Create">Create Schedule</a>.
+    </div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Quiz</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Max Attempts</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@s.Quiz?.Title</td>
+                    <td>@s.StartAt.LocalDateTime</td>
+                    <td>@s.EndAt.LocalDateTime</td>
+                    <td>@s.MaxAttempts</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

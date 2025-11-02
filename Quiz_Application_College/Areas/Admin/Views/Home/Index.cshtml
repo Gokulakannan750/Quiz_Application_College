@@ -1,0 +1,110 @@
+﻿@model Quiz_Application_College.ViewModels.AdminDashboardVm
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+<h1 class="mb-3">Admin Dashboard</h1>
+<p class="text-muted">Overview of activity and quick links.</p>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Total Quizzes</div>
+                <div class="display-6">@Model.TotalQuizzes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Open Now</div>
+                <div class="display-6">@Model.OpenSchedulesNow</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Enrollments</div>
+                <div class="display-6">@Model.TotalEnrollments</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted">Attempts Today</div>
+                <div class="display-6">@Model.AttemptsToday</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-3">
+    <partial name="~/Areas/Admin/Views/Shared/_AdminNav.cshtml" />
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Recent Enrollments</div>
+            <div class="card-body p-0">
+                @if (Model.RecentEnrollments == null || !Model.RecentEnrollments.Any())
+                {
+                    <div class="p-3 text-muted">No enrollments yet.</div>
+                }
+                else
+                {
+                    <table class="table mb-0">
+                        <thead>
+                            <tr><th>When</th><th>Student</th><th>Quiz</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in Model.RecentEnrollments)
+                            {
+                                <tr>
+                                    <td>@e.CreatedAt.LocalDateTime</td>
+                                    <td>@e.Email</td>
+                                    <td>@e.QuizTitle</td>
+                                    <td>@e.Status</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Recent Attempts</div>
+            <div class="card-body p-0">
+                @if (Model.RecentAttempts == null || !Model.RecentAttempts.Any())
+                {
+                    <div class="p-3 text-muted">No attempts yet.</div>
+                }
+                else
+                {
+                    <table class="table mb-0">
+                        <thead>
+                            <tr><th>When</th><th>Student</th><th>Quiz</th><th>Status</th><th>Score</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.RecentAttempts)
+                            {
+                                <tr>
+                                    <td>@a.StartedAt.LocalDateTime</td>
+                                    <td>@a.Email</td>
+                                    <td>@a.QuizTitle</td>
+                                    <td>@(a.SubmittedAt.HasValue ? "Submitted" : "In Progress")</td>
+                                    <td>@a.Score</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

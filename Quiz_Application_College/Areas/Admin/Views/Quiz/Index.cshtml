@@ -1,0 +1,69 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.Quiz>
+@{
+    ViewData["Title"] = "Quizzes";
+    var hasItems = Model != null && Model.Any();
+}
+<h2>Quizzes</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Create Quiz</a>
+</p>
+
+@if (!hasItems)
+{
+    <div class="alert alert-info">
+        <strong>No quizzes yet.</strong> Click <a asp-action="Create">Create Quiz</a> to add your first quiz.
+    </div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Duration</th>
+                <th>Total Marks</th>
+                <th>Negative</th>
+                <th>Published</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var q in Model)
+            {
+                <tr>
+                    <td>@q.Title</td>
+                    <td>@q.DurationMinutes min</td>
+                    <td>@q.TotalMarks</td>
+                    <td>@(q.EnableNegativeMarking ? (q.NegativeMarkPerWrong?.ToString() ?? "Yes") : "No")</td>
+                    <td>@(q.IsPublished ? "Yes" : "No")</td>
+                    <td>@q.CreatedAt.LocalDateTime</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@q.Id">Edit</a>
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-action="Assign" asp-route-id="@q.Id">Assign</a>
+                    </td>
+                    <td>
+                        @if (q.IsPublished)
+                        {
+                            <form asp-action="Unpublish" method="post" asp-route-id="@q.Id" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-warning">Unpublish</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="Publish" method="post" asp-route-id="@q.Id" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-success">Publish</button>
+                            </form>
+                        }
+                    </td>
+
+
+                </tr>
+            }
+        </tbody>
+    </table>
+}

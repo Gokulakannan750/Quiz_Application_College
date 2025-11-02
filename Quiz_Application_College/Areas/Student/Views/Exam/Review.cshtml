@@ -1,0 +1,42 @@
+﻿@model Quiz_Application_College.ViewModels.ExamReviewVm
+@{
+    ViewData["Title"] = "Review";
+}
+<h2>@Model.QuizTitle — Review</h2>
+<div class="alert alert-info">Total Score: <strong>@Model.TotalScore</strong></div>
+
+@foreach (var i in Model.Items)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Q@i.Number. @i.Question</h5>
+            <ol type="A">
+                @foreach (var o in i.Options)
+                {
+                    var isCorrect = i.CorrectOptionId == o.Id;
+                    var isYours = i.YourOptionId == o.Id;
+                    <li>
+                        @o.Text
+                        @if (isCorrect)
+                        {
+                            <span class="badge bg-success ms-2">Correct</span>
+                        }
+                        @if (isYours && !isCorrect)
+                        {
+                            <span class="badge bg-danger ms-2">Your Answer</span>
+                        }
+                        @if (isYours && isCorrect)
+                        {
+                            <span class="badge bg-primary ms-2">You chose</span>
+                        }
+                    </li>
+                }
+            </ol>
+            <div>
+                Marks: @i.Marks &nbsp; | &nbsp; Earned: <strong>@i.Earned</strong>
+            </div>
+        </div>
+    </div>
+}
+
+<a class="btn btn-secondary" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Back to My Quizzes</a>

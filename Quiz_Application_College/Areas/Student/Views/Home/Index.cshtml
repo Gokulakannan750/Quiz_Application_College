@@ -1,0 +1,46 @@
+﻿@{
+    ViewData["Title"] = "Student Dashboard";
+    var enrolled = (int)ViewBag.EnrolledCount;
+    var openNow = (int)ViewBag.OpenNowCount;
+    var attempts = (int)ViewBag.AttemptsCount;
+    var pending = (Quiz_Application_College.Domain.Attempt?)ViewBag.PendingAttempt;
+}
+<h2>Student Dashboard</h2>
+
+<div class="row g-3">
+    <div class="col-md-3">
+        <div class="card text-bg-light">
+            <div class="card-body">
+                <div class="h5">Enrolled Quizzes</div>
+                <div class="display-6">@enrolled</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-light">
+            <div class="card-body">
+                <div class="h5">Open Now</div>
+                <div class="display-6">@openNow</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-light">
+            <div class="card-body">
+                <div class="h5">Total Attempts</div>
+                <div class="display-6">@attempts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a class="btn btn-primary" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Go to My Quizzes</a>
+    @if (pending != null)
+    {
+        <a class="btn btn-warning ms-2"
+           asp-area="Student" asp-controller="Exam" asp-action="Player" asp-route-attemptId="@pending.Id">
+            Resume Attempt: @pending.Quiz?.Title
+        </a>
+    }
+</div>

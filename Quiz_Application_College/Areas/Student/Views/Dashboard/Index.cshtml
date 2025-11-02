@@ -1,0 +1,55 @@
+﻿@model IEnumerable<Quiz_Application_College.Services.Student.AvailableQuizItem>
+@{
+    ViewData["Title"] = "My Quizzes";
+}
+<h2>Available Quizzes</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">No quizzes are available right now. Please check later.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Quiz</th>
+                <th>Opens</th>
+                <th>Closes</th>
+                <th>Duration</th>
+                <th>Attempts</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var x in Model)
+            {
+                <tr>
+                    <td>@x.Title</td>
+                    <td>@x.StartAt.LocalDateTime</td>
+                    <td>@x.EndAt.LocalDateTime</td>
+                    <td>@x.DurationMinutes min</td>
+                    <td>@x.UsedAttempts / @x.MaxAttempts</td>
+                    <td>
+                        @if (x.RemainingAttempts > 0)
+                        {
+                            <a class="btn btn-sm btn-success"
+                               href="@Url.Action("Start", "Exam", new { area = "Student", quizId = x.QuizId })">
+                                Start
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-danger">Attempt limit reached</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

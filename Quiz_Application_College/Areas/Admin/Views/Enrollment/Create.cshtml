@@ -1,0 +1,26 @@
+﻿@model Quiz_Application_College.ViewModels.EnrollmentCreateVm
+@{
+    ViewData["Title"] = "Add Enrollment";
+}
+<h2>Add Enrollment</h2>
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label class="form-label">Quiz</label>
+        <select asp-for="QuizId" class="form-select" asp-items="ViewBag.QuizOptions"></select>
+        <span asp-validation-for="QuizId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" placeholder="student1@quiz.local" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-success" type="submit">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

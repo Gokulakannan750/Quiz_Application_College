@@ -1,0 +1,66 @@
+﻿@* Areas/Admin/Views/Shared/_AdminNav.cshtml *@
+<div class="row g-3">
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Quizzes</h5>
+                <p class="card-text">Create and manage quizzes.</p>
+                <a class="btn btn-primary w-100" asp-area="Admin" asp-controller="Quiz" asp-action="Index">Open</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Schedules</h5>
+                <p class="card-text">Set when a quiz is available.</p>
+                <a class="btn btn-primary w-100" asp-area="Admin" asp-controller="Schedule" asp-action="Index">Open</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Enrollments</h5>
+                <p class="card-text">Grant/revoke student access.</p>
+                <a class="btn btn-primary w-100" asp-area="Admin" asp-controller="Enrollment" asp-action="Index">Open</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Question Bank</h5>
+                <p class="card-text">MCQ questions & options.</p>
+                <a class="btn btn-primary w-100" asp-area="Admin" asp-controller="QuestionBank" asp-action="Index">Open</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Results</h5>
+                <p class="card-text">View/export analytics.</p>
+                <a class="btn btn-outline-secondary w-100 disabled" href="#">Coming soon</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Reports</h5>
+                <p class="card-text">Download Excel reports.</p>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Reports" asp-action="EnrollmentsXlsx">Enrollments.xlsx</a>
+                    <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Reports" asp-action="AttemptsXlsx">Attempts.xlsx</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

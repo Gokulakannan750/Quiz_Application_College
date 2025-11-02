@@ -1,0 +1,37 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.McqQuestion>
+@{
+    ViewData["Title"] = "Question Bank";
+}
+<h2>Question Bank</h2>
+<p><a asp-action="Create" class="btn btn-primary">Create Question</a></p>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">No questions yet. Click <a asp-action="Create">Create Question</a>.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>Question</th><th>Marks</th><th>Options</th></tr></thead>
+        <tbody>
+            @foreach (var q in Model)
+            {
+                <tr>
+                    <td>@q.Text</td>
+                    <td>@q.Marks</td>
+                    <td>
+                        <ol type="A">
+                            @foreach (var o in q.Options)
+                            {
+                                <li>@o.Text @if(o.IsCorrect){
+                                <strong>(✓)</strong>
+                            }
+        </li>
+                        }
+                    </ol>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+}

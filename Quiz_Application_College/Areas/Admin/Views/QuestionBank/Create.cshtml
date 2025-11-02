@@ -1,0 +1,45 @@
+﻿@model Quiz_Application_College.ViewModels.McqCreateVm
+@{
+    ViewData["Title"] = "Create Question";
+}
+<h2>Create MCQ</h2>
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label asp-for="Text" class="form-label"></label>
+        <textarea asp-for="Text" rows="3" class="form-control"></textarea>
+        <span asp-validation-for="Text" class="text-danger"></span>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-2">
+            <label asp-for="Marks" class="form-label"></label>
+            <input asp-for="Marks" class="form-control" />
+            <span asp-validation-for="Marks" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Tag" class="form-label">Tag (optional)</label>
+            <input asp-for="Tag" class="form-control" />
+        </div>
+    </div>
+
+    <hr />
+    <h5>Options</h5>
+    @for (int i = 0; i < 4; i++)
+    {
+        <div class="input-group mb-2">
+            <div class="input-group-text">
+                <input class="form-check-input mt-0" type="radio" name="CorrectIndex" value="@i" />
+            </div>
+            <input class="form-control" name="Options[@i]" placeholder="Option @( (char)('A'+i) )" />
+        </div>
+    }
+    <div class="form-text">Select the radio button next to the correct option.</div>
+
+    <button class="btn btn-success mt-3">Save</button>
+    <a asp-action="Index" class="btn btn-secondary mt-3">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

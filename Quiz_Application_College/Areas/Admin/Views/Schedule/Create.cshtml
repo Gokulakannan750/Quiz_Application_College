@@ -1,0 +1,51 @@
+﻿@model Quiz_Application_College.ViewModels.ScheduleCreateVm
+@{
+    ViewData["Title"] = "Create Schedule";
+}
+<h2>Create Schedule</h2>
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label class="form-label">Quiz</label>
+        <select asp-for="QuizId" class="form-select" asp-items="ViewBag.QuizOptions"></select>
+        <span asp-validation-for="QuizId" class="text-danger"></span>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="StartAt" class="form-label"></label>
+            <input type="datetime-local" class="form-control"
+                   name="StartAt"
+                   value="@(Model.StartAt.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"))" />
+            <span asp-validation-for="StartAt" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="EndAt" class="form-label"></label>
+            <input type="datetime-local" class="form-control"
+                   name="EndAt"
+                   value="@(Model.EndAt.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"))" />
+            <span asp-validation-for="EndAt" class="text-danger"></span>
+        </div>
+    </div>
+
+
+    <div class="row g-3 mt-2">
+        <div class="col-md-4">
+            <label asp-for="MaxAttempts" class="form-label"></label>
+            <input asp-for="MaxAttempts" class="form-control" />
+            <span asp-validation-for="MaxAttempts" class="text-danger"></span>
+        </div>
+        <div class="col-md-8">
+            <label asp-for="Timezone" class="form-label"></label>
+            <input asp-for="Timezone" class="form-control" placeholder="e.g., Asia/Kolkata" />
+            <span asp-validation-for="Timezone" class="text-danger"></span>
+        </div>
+    </div>
+
+    <button class="btn btn-success mt-3" type="submit">Save</button>
+    <a asp-action="Index" class="btn btn-secondary mt-3">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
