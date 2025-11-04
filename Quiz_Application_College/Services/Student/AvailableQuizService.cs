@@ -11,7 +11,6 @@ namespace Quiz_Application_College.Services.Student
         public DateTimeOffset StartAt { get; set; }
         public DateTimeOffset EndAt { get; set; }
         public int DurationMinutes { get; set; }
-
         public int MaxAttempts { get; set; }
         public int UsedAttempts { get; set; }
         public int RemainingAttempts => Math.Max(0, MaxAttempts - UsedAttempts);
@@ -22,17 +21,19 @@ namespace Quiz_Application_College.Services.Student
         private readonly ApplicationDbContext _db;
         public AvailableQuizService(ApplicationDbContext db) => _db = db;
 
+        /// <summary>
+        /// Quizzes the student can still take right now (within an open schedule AND attempts remaining).
+        /// </summary>
         public async Task<List<AvailableQuizItem>> GetAvailableAsync(string userId, DateTimeOffset now)
         {
-            // 1) Get open schedules for quizzes the user is enrolled in
-            var open = await (from e in _db.Enrollments
-                              join q in _db.Quizzes on e.QuizId equals q.Id
-                              join s in _db.QuizSchedules on q.Id equals s.QuizId
+            var list = await (from e in _db.Enrollments
+                              join s in _db.QuizSchedules on e.QuizId equals s.QuizId
+                              join q in _db.Quizzes on s.QuizId equals q.Id
                               where e.UserId == userId
                                     && e.Status == "Active"
                                     && q.IsPublished
                                     && s.StartAt <= now && now <= s.EndAt
-                              select new
+                              select new AvailableQuizItem
                               {
                                   QuizId = q.Id,
                                   ScheduleId = s.Id,
@@ -40,37 +41,52 @@ namespace Quiz_Application_College.Services.Student
                                   DurationMinutes = q.DurationMinutes,
                                   StartAt = s.StartAt,
                                   EndAt = s.EndAt,
-                                  MaxAttempts = s.MaxAttempts
+                                  MaxAttempts = s.MaxAttempts,
+                                  UsedAttempts = _db.Attempts.Count(a =>
+                                      a.UserId == userId &&
+                                      a.QuizId == q.Id &&
+                                      a.StartedAt >= s.StartAt &&
+                                      a.StartedAt <= s.EndAt)
                               })
+                              .OrderBy(x => x.EndAt)
                               .ToListAsync();
 
-            var result = new List<AvailableQuizItem>(open.Count);
-
-            // 2) For each open schedule window, count attempts started within the window
-            foreach (var o in open)
-            {
-                var used = await _db.Attempts
-                    .Where(a => a.UserId == userId
-                             && a.QuizId == o.QuizId
-                             && a.StartedAt >= o.StartAt
-                             && a.StartedAt <= o.EndAt)
-                    .CountAsync();
-
-                result.Add(new AvailableQuizItem
-                {
-                    QuizId = o.QuizId,
-                    ScheduleId = o.ScheduleId,
-                    Title = o.Title,
-                    StartAt = o.StartAt,
-                    EndAt = o.EndAt,
-                    DurationMinutes = o.DurationMinutes,
-                    MaxAttempts = o.MaxAttempts,
-                    UsedAttempts = used
-                });
-            }
-
-            return result.OrderBy(x => x.EndAt).ToList();
+            // Only show still-available ones
+            return list.Where(x => x.UsedAttempts < x.MaxAttempts).ToList();
         }
 
+        /// <summary>
+        /// Open schedules the student cannot take because MaxAttempts is already reached.
+        /// Useful for showing an info message.
+        /// </summary>
+        public async Task<List<AvailableQuizItem>> GetOpenButExhaustedAsync(string userId, DateTimeOffset now)
+        {
+            var list = await (from e in _db.Enrollments
+                              join s in _db.QuizSchedules on e.QuizId equals s.QuizId
+                              join q in _db.Quizzes on s.QuizId equals q.Id
+                              where e.UserId == userId
+                                    && e.Status == "Active"
+                                    && q.IsPublished
+                                    && s.StartAt <= now && now <= s.EndAt
+                              select new AvailableQuizItem
+                              {
+                                  QuizId = q.Id,
+                                  ScheduleId = s.Id,
+                                  Title = q.Title,
+                                  DurationMinutes = q.DurationMinutes,
+                                  StartAt = s.StartAt,
+                                  EndAt = s.EndAt,
+                                  MaxAttempts = s.MaxAttempts,
+                                  UsedAttempts = _db.Attempts.Count(a =>
+                                      a.UserId == userId &&
+                                      a.QuizId == q.Id &&
+                                      a.StartedAt >= s.StartAt &&
+                                      a.StartedAt <= s.EndAt)
+                              })
+                              .OrderBy(x => x.EndAt)
+                              .ToListAsync();
+
+            return list.Where(x => x.UsedAttempts >= x.MaxAttempts).ToList();
+        }
     }
 }

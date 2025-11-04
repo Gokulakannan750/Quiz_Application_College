@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Domain;
+using System.Reflection.Emit;
 
 namespace Quiz_Application_College.Data
 {
@@ -45,6 +46,12 @@ namespace Quiz_Application_College.Data
             b.Entity<Response>()
                 .HasIndex(r => new { r.AttemptId, r.QuestionId })
                 .IsUnique();
+
+            // McqQuestion
+            b.Entity<McqQuestion>()
+                .HasIndex(q => q.NormalizedText)
+                .IsUnique()
+                .HasFilter("[NormalizedText] IS NOT NULL");
 
             // McqOption
             b.Entity<McqOption>()

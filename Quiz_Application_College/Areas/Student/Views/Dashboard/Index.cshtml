@@ -9,6 +9,19 @@
     <div class="alert alert-danger">@TempData["Error"]</div>
 }
 
+@if (ViewBag.Exhausted != null && ((IEnumerable<dynamic>)ViewBag.Exhausted).Any())
+{
+    <div class="alert alert-info">
+        Some quizzes are open but hidden here because you’ve used all attempts:
+        <ul class="mb-0">
+            @foreach (var it in (IEnumerable<dynamic>)ViewBag.Exhausted)
+            {
+                <li>@it.Title (Max @it.MaxAttempts attempts reached)</li>
+            }
+        </ul>
+    </div>
+}
+
 @if (Model == null || !Model.Any())
 {
     <div class="alert alert-info">No quizzes are available right now. Please check later.</div>

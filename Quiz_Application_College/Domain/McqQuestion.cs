@@ -17,5 +17,9 @@ namespace Quiz_Application_College.Domain
         // convenience for manual difficulty tags etc. (optional)
         [MaxLength(100)]
         public string? Tag { get; set; }
+
+        // Add this new column to hold a normalized, dedupe key
+        public string? NormalizedText { get; set; }  // lowercase, spaces collapsed
+
     }
 }
