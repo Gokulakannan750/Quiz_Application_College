@@ -1,22 +1,320 @@
-html {
-  font-size: 14px;
+/* ==========================================================================
+   TLS QUIZ — Global Styles (Bootstrap-friendly)
+   Replace your entire wwwroot/css/site.css with this file.
+   Colors are matched to your logo; Dark Mode is supported.
+   ========================================================================== */
+
+/* ---------- Theme variables (LIGHT as default) ---------- */
+:root {
+    --tls-charcoal: #1a1a1a; /* navbar bg (logo black) */
+    --tls-hot: #ff0a3d; /* hot red accent (logo chevrons) */
+    --tls-cherry: #8b0014; /* tagline cherry red */
+    --tls-muted: #6c757d; /* muted text */
+    --tls-bg: #f6f7f9; /* page background */
+    --tls-text: #212529; /* body text */
+    --tls-card: #ffffff; /* card & panels */
+    --tls-border: #eaeaea; /* card borders / separators */
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+html, body {
+    background: var(--tls-bg);
+    color: var(--tls-text);
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+/* Optional: slightly nicer heading spacing */
+h1, h2, h3, h4, h5 {
+    margin-bottom: .35rem;
 }
 
-html {
-  position: relative;
-  min-height: 100%;
+/* ========================================================================== */
+/* NAVBAR */
+/* ========================================================================== */
+.navbar-tls {
+    background: var(--tls-charcoal);
+    box-shadow: 0 2px 14px rgba(0,0,0,.15);
 }
 
-body {
-  margin-bottom: 60px;
+    .navbar-tls .navbar-brand,
+    .navbar-tls .nav-link,
+    .navbar-tls .navbar-text {
+        color: #fff;
+    }
+
+        .navbar-tls .nav-link:hover,
+        .navbar-tls .nav-link.active {
+            color: var(--tls-hot);
+        }
+
+    .navbar-tls .btn-outline-light {
+        --bs-btn-color: #fff;
+        --bs-btn-border-color: #fff;
+    }
+
+/* user initials avatar shown in the navbar */
+.tls-avatar {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--tls-hot);
+    font-weight: 700;
+    font-size: .9rem;
+}
+
+/* ========================================================================== */
+/* CARDS / LISTS / BORDERS */
+/* ========================================================================== */
+.card {
+    background: var(--tls-card);
+    border-color: var(--tls-border);
+}
+
+.list-group-item {
+    background: var(--tls-card);
+    border-color: var(--tls-border);
+}
+
+.hr-soft {
+    border: none;
+    border-top: 1px solid var(--tls-border);
+    margin: .75rem 0;
+}
+
+/* Dashboard tile */
+.dash-card {
+    position: relative;
+    background: var(--tls-card);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.06);
+}
+
+.dash-label {
+    font-size: .85rem;
+    color: var(--tls-muted);
+}
+
+.dash-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Make stretched-link cover the whole dash-card */
+.dash-card .stretched-link {
+    border-radius: 16px;
+}
+
+/* ========================================================================== */
+/* BUTTONS / BADGES / UTILITIES */
+/* ========================================================================== */
+.btn-accent {
+    background: var(--tls-hot);
+    border-color: var(--tls-hot);
+    color: #fff;
+}
+
+    .btn-accent:hover {
+        filter: brightness(.95);
+        color: #fff;
+    }
+
+.btn-ghost {
+    border-color: var(--tls-hot);
+    color: var(--tls-hot);
+}
+
+    .btn-ghost:hover {
+        background: rgba(255,10,61,.1);
+        color: var(--tls-hot);
+    }
+
+.badge-accent {
+    background: var(--tls-hot);
+}
+
+.text-accent {
+    color: var(--tls-hot) !important;
+}
+
+.text-cherry {
+    color: var(--tls-cherry) !important;
+}
+
+/* ========================================================================== */
+/* PROGRESS RING (optional widget) */
+/* Usage: <div class="ring" data-value="72" data-size="64" data-stroke="6"></div>
+/* ========================================================================== */
+.ring {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+}
+
+    .ring svg {
+        overflow: visible;
+    }
+
+.ring-bg {
+    stroke: #ddd;
+    opacity: .5;
+}
+
+.ring-fg {
+    stroke: var(--tls-hot);
+    stroke-linecap: round;
+}
+
+.ring-label {
+    position: absolute;
+    font-weight: 700;
+    font-size: .9rem;
+    color: var(--tls-text);
+}
+
+/* ========================================================================== */
+/* DARK MODE — activated when <html> has class "theme-dark"
+/* The toggle button in _Layout.cshtml adds/removes this class and stores it in
+/* localStorage ('tls-theme') so the choice persists across pages.
+/* ========================================================================== */
+.theme-dark {
+    --tls-charcoal: #111; /* darker navbar */
+    --tls-hot: #ff2a55; /* slightly brighter accent for dark */
+    --tls-cherry: #d4152f;
+    --tls-muted: #9aa0a6;
+    --tls-card: #17181a; /* panels */
+    --tls-bg: #0f1113; /* page background */
+    color-scheme: dark; /* let browsers adjust native controls */
+}
+
+    .theme-dark html, .theme-dark body {
+        background: var(--tls-bg);
+        color: #e7e8ea;
+    }
+
+    .theme-dark .card, .theme-dark .list-group-item {
+        background: var(--tls-card);
+        border-color: rgba(255,255,255,.08);
+    }
+
+    .theme-dark .ring-bg {
+        stroke: #444;
+        opacity: .8;
+    }
+    /* --- Dark-mode readability fixes (override Bootstrap defaults) --- */
+    .theme-dark .text-dark,
+    .theme-dark .text-body {
+        color: #e7e8ea !important;
+    }
+
+    .theme-dark .text-muted {
+        color: #b7bcc3 !important;
+    }
+
+    .theme-dark .bg-light {
+        background-color: #23262a !important;
+    }
+
+    .theme-dark .border-light {
+        border-color: rgba(255,255,255,.12) !important;
+    }
+
+    .theme-dark .badge.bg-light {
+        background-color: #23262a !important;
+        color: #cfd2d6 !important;
+        border: 1px solid rgba(255,255,255,.08);
+    }
+
+    /* Buttons that use "light" variants */
+    .theme-dark .btn-light {
+        background-color: #23262a;
+        color: #e7e8ea;
+        border-color: rgba(255,255,255,.12);
+    }
+
+    .theme-dark .btn-outline-dark {
+        color: #e7e8ea;
+        border-color: rgba(255,255,255,.32);
+    }
+
+    /* Common text helpers that sometimes appear black */
+    .theme-dark .navbar-text,
+    .theme-dark .nav-link {
+        color: #fff !important;
+    }
+
+    .theme-dark .form-label {
+        color: #cfd2d6 !important;
+    }
+
+    .theme-dark .table {
+        color: #e7e8ea;
+    }
+
+    .theme-dark .list-group-item {
+        color: #e7e8ea;
+    }
+
+
+/* ========================================================================== */
+/* FORMS / TABLES (subtle improvements for both themes) */
+/* ========================================================================== */
+.form-control, .form-select {
+    background: var(--tls-card);
+    color: var(--tls-text);
+    border-color: var(--tls-border);
+}
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--tls-hot);
+        box-shadow: 0 0 0 .2rem rgba(255,10,61,.15);
+    }
+
+.table {
+    color: inherit;
+}
+
+    .table thead th {
+        border-bottom-color: var(--tls-border);
+    }
+
+    .table td, .table th {
+        border-color: var(--tls-border);
+    }
+
+/* ========================================================================== */
+/* LINKS */
+/* ========================================================================== */
+a {
+    color: inherit;
+}
+
+    a.text-accent, .link-accent {
+        color: var(--tls-hot) !important;
+    }
+
+        a.text-accent:hover, .link-accent:hover {
+            filter: brightness(.9);
+        }
+
+/* ========================================================================== */
+/* SPACING HELPERS (tiny set) */
+/* ========================================================================== */
+.gap-2 {
+    gap: .5rem !important;
+}
+
+.gap-3 {
+    gap: 1rem !important;
+}
+
+/* ========================================================================== */
+/* FOOTER */
+/* ========================================================================== */
+footer {
+    color: var(--tls-muted);
 }

@@ -1,74 +1,89 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@ViewData["Title"] - Quiz_Application_College</title>
+    <script>
+        // Apply saved theme before paint
+        (function(){ if(localStorage.getItem('tls-theme')==='dark')
+          document.documentElement.classList.add('theme-dark');})();
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Quiz_Application_College.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Quiz_Application_College</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+    <nav class="navbar navbar-expand-lg navbar-tls">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
+                <img src="~/img/logo.png" alt="TLS" width="32" height="32" class="me-2" />
+                <span class="fw-semibold">TLS Quiz</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div id="mainNav" class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="Admin" asp-controller="Home" asp-action="Index">Home</a>
+                            </li>
+                        }
+                        else if (User.IsInRole("Student"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="Student" asp-controller="Home" asp-action="Index">Home</a>
+                            </li>
+                        }
+                    }
+                    else
+                    {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="Admin" asp-controller="Home" asp-action="Index">Admin</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="Student" asp-controller="Home" asp-action="Index">Student</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Dashboard" asp-action="Index">My Dashboard</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Admin
-                            </a>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="Student" asp-controller="Dashboard" asp-action="Index">My Quizzes</a>
-                        </li>
+                    }
+                </ul>
 
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Home" asp-action="Index">Dashboard</a></li>
-                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Quiz" asp-action="Index">Quizzes</a></li>
-                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Schedule" asp-action="Index">Schedules</a></li>
-                            </ul>
-                        </li>
-
-                    </ul>
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item me-2">
+                        <button id="themeToggle" class="btn btn-sm btn-outline-light" type="button" title="Toggle theme">
+                            <span class="theme-light-only">🌙</span><span class="theme-dark-only d-none">☀️</span>
+                        </button>
+                    </li>
                     <partial name="_LoginPartial" />
-                </div>
+                </ul>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <main role="main">@RenderBody()</main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - Quiz_Application_College - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
+    <footer class="border-top text-center py-3 small">
+        <img src="~/img/logo.png" width="18" height="18" class="me-1" />
+        <span class="text-cherry">Beyond Today</span> · © @DateTime.Now.Year
     </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        // dark mode toggle
+        (function(){
+          const btn=document.getElementById('themeToggle'), root=document.documentElement;
+          function sync(){ const d=root.classList.contains('theme-dark');
+            document.querySelector('.theme-light-only')?.classList.toggle('d-none', d);
+            document.querySelector('.theme-dark-only')?.classList.toggle('d-none', !d);}
+          btn?.addEventListener('click',()=>{root.classList.toggle('theme-dark');
+            localStorage.setItem('tls-theme',root.classList.contains('theme-dark')?'dark':'light'); sync();});
+          sync();
+        })();
+    </script>
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

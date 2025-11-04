@@ -12,11 +12,21 @@ namespace Quiz_Application_College.Controllers
         {
             _logger = logger;
         }
-
         public IActionResult Index()
         {
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                if (User.IsInRole("Admin"))
+                    return RedirectToAction("Index", "Home", new { area = "Admin" });
+
+                if (User.IsInRole("Student"))
+                    return RedirectToAction("Index", "Home", new { area = "Student" });
+            }
+
+            // Your public landing page (or redirect to /Identity/Account/Login)
             return View();
         }
+
 
         public IActionResult Privacy()
         {

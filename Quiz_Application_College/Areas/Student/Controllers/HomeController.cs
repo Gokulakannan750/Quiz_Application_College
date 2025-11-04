@@ -17,46 +17,18 @@ namespace Quiz_Application_College.Areas.Student.Controllers
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
             var now = DateTimeOffset.Now;
 
-            // total enrolled
-            var enrolledCount = await _db.Enrollments
-                .CountAsync(e => e.UserId == userId && e.Status == "Active");
+            ViewBag.EnrolledCount = await _db.Enrollments.Where(e => e.UserId == userId).CountAsync();
 
-            // count of open schedules where the student still has attempts remaining
-            var openWithRemaining = await (
-                from e in _db.Enrollments
-                join s in _db.QuizSchedules on e.QuizId equals s.QuizId
-                where e.UserId == userId
-                      && e.Status == "Active"
-                      && s.StartAt <= now && now <= s.EndAt
-                select new
-                {
-                    s.MaxAttempts,
-                    Used = _db.Attempts.Count(a =>
-                        a.UserId == userId &&
-                        a.QuizId == e.QuizId &&
-                        a.StartedAt >= s.StartAt &&
-                        a.StartedAt <= s.EndAt)
-                })
-                .Where(x => x.Used < x.MaxAttempts)
-                .CountAsync();
+            ViewBag.OpenNowCount = await _db.Enrollments
+                .Where(e => e.UserId == userId)
+                .Join(_db.QuizSchedules, e => e.QuizId, s => s.QuizId, (e, s) => s)
+                .Where(s => s.StartAt <= now && now <= s.EndAt).CountAsync();
 
-            // total attempts (all time)
-            var attemptsCount = await _db.Attempts.CountAsync(a => a.UserId == userId);
-
-            // keep this if your view uses it (safe even if you don't show a resume banner)
-            var pendingAttempt = await _db.Attempts
-                .Include(a => a.Quiz)
-                .Where(a => a.UserId == userId && a.SubmittedAt == null)
-                .OrderByDescending(a => a.StartedAt)
-                .FirstOrDefaultAsync();
-
-            ViewBag.EnrolledCount = enrolledCount;
-            ViewBag.OpenNowCount = openWithRemaining; // ✅ now reflects remaining attempts
-            ViewBag.AttemptsCount = attemptsCount;
-            ViewBag.PendingAttempt = pendingAttempt;
+            ViewBag.AttemptsCount = await _db.Attempts.Where(a => a.UserId == userId).CountAsync();
 
             return View();
         }
+
 
     }
 }

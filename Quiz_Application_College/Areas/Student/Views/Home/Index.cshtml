@@ -1,50 +1,51 @@
 ﻿@{
     ViewData["Title"] = "Student Dashboard";
-    var enrolled = (int)ViewBag.EnrolledCount;
-    var openNow = (int)ViewBag.OpenNowCount;
-    var attempts = (int)ViewBag.AttemptsCount;
-    var pending = (Quiz_Application_College.Domain.Attempt?)ViewBag.PendingAttempt;
+    int enrolled = ViewBag.EnrolledCount ?? 0;
+    int openNow = ViewBag.OpenNowCount ?? 0;
+    int attempts = ViewBag.AttemptsCount ?? 0;
 }
-<h2>Student Dashboard</h2>
 
-<div class="row g-3">
-    <div class="col-md-3">
-        <div class="card text-bg-light">
-            <div class="card-body">
-                <div class="h5">Enrolled Quizzes</div>
-                <div class="display-6">@enrolled</div>
-            </div>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h1 class="h4 mb-1">Student Dashboard</h1>
+        <div class="text-muted">Welcome back! Ready to test your skills?</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-primary" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Go to My Quizzes</a>
+        <a class="btn btn-sm btn-outline-primary" asp-area="Student" asp-controller="Results" asp-action="Index">My Results</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="dash-card position-relative">
+            <div class="dash-label">Enrolled Quizzes</div>
+            <div class="dash-value">@enrolled</div>
+            <a class="stretched-link" asp-area="Student" asp-controller="Dashboard" asp-action="Index"></a>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-bg-light">
-            <div class="card-body">
-                <div class="h5">Open Now</div>
-                <div class="display-6">@openNow</div>
-            </div>
+
+    <div class="col-12 col-md-4">
+        <div class="dash-card position-relative">
+            <div class="dash-label">Open Now</div>
+            <div class="dash-value">@openNow</div>
+            <a class="stretched-link" asp-area="Student" asp-controller="Dashboard" asp-action="Index"></a>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-bg-light">
-            <div class="card-body">
-                <div class="h5">Total Attempts</div>
-                <div class="display-6">@attempts</div>
-            </div>
+
+    <div class="col-12 col-md-4">
+        <div class="dash-card position-relative">
+            <div class="dash-label">Total Attempts</div>
+            <div class="dash-value">@attempts</div>
+            <a class="stretched-link" asp-area="Student" asp-controller="Results" asp-action="Index"></a>
         </div>
     </div>
 </div>
 
-<a class="btn btn-outline-primary" asp-area="Student" asp-controller="Results" asp-action="Index">
-    View My Results
-</a>
-
-<div class="mt-4">
-    <a class="btn btn-primary" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Go to My Quizzes</a>
-    @if (pending != null)
-    {
-        <a class="btn btn-warning ms-2"
-           asp-area="Student" asp-controller="Exam" asp-action="Player" asp-route-attemptId="@pending.Id">
-            Resume Attempt: @pending.Quiz?.Title
-        </a>
-    }
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-2">Quick Actions</h5>
+        <a class="btn btn-primary me-2" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Browse Available Quizzes</a>
+        <a class="btn btn-outline-primary" asp-area="Student" asp-controller="Results" asp-action="Index">View My Results</a>
+    </div>
 </div>
