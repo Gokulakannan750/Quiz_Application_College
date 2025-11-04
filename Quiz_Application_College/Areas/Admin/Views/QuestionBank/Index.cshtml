@@ -5,6 +5,13 @@
 <h2>Question Bank</h2>
 <p><a asp-action="Create" class="btn btn-primary">Create Question</a></p>
 
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="btn-group">
+        <a class="btn btn-outline-secondary" asp-action="Template">Download Template</a>
+        <a class="btn btn-primary" asp-action="Import">Import Questions (.xlsx)</a>
+    </div>
+</div>
+
 @if (Model == null || !Model.Any())
 {
     <div class="alert alert-info">No questions yet. Click <a asp-action="Create">Create Question</a>.</div>
@@ -26,9 +33,17 @@ else
                                 <li>@o.Text @if(o.IsCorrect){
                                 <strong>(✓)</strong>
                             }
-        </li>
+                                 </li>
                         }
                     </ol>
+                </td>
+                <td class="text-nowrap">
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@q.Id">Edit</a>
+                    <form asp-action="Delete" asp-route-id="@q.Id" method="post" class="d-inline"
+                          onsubmit="return confirm('Delete this question? This will remove its options and quiz links.');">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                    </form>
                 </td>
             </tr>
         }

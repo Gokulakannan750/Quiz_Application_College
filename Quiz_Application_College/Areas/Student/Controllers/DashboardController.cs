@@ -14,9 +14,18 @@ namespace Quiz_Application_College.Areas.Student.Controllers
         public async Task<IActionResult> Index()
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
-            var now = DateTimeOffset.UtcNow;
-            var data = await _svc.GetAvailableAsync(userId, now);
-            return View(data);
+            var now = DateTimeOffset.Now;
+
+            // Only quizzes the student can still take
+            var available = await _svc.GetAvailableAsync(userId, now);
+
+            // Optional: open but attempts exhausted (for an info alert in the view)
+            var exhausted = await _svc.GetOpenButExhaustedAsync(userId, now);
+            ViewBag.Exhausted = exhausted
+                .Select(x => new { x.Title, x.MaxAttempts })
+                .ToList();
+
+            return View(available);
         }
     }
 }
