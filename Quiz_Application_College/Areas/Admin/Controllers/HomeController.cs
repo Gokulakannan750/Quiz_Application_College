@@ -23,13 +23,13 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
         public async Task<IActionResult> Index()
         {
             var now = DateTimeOffset.Now;
-            var todayLocal = now.Date;              // local day start
+            var todayLocal = now.Date;
             var tomorrowLocal = todayLocal.AddDays(1);
 
             var vm = new AdminDashboardVm
             {
                 TotalQuizzes = await _db.Quizzes.CountAsync(),
-                OpenSchedulesNow = await _db.QuizSchedules.CountAsync(s => s.StartAt <= now && now <= s.EndAt),
+                OpenSchedulesNow = await _db.QuizSchedules.CountAsync(s => s.StartAt <= now && now <= s.EndAt), // <—
                 TotalEnrollments = await _db.Enrollments.CountAsync(),
                 AttemptsToday = await _db.Attempts.CountAsync(a => a.StartedAt >= todayLocal && a.StartedAt < tomorrowLocal)
             };
