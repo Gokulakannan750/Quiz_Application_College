@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
-using Quiz_Application_College.Services.Coding.Runner;
+using Quiz_Application_College.Services.Coding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +20,13 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 1024L * 1024L * 100L; // 100 MB
 });
 
-builder.Services.AddSingleton<ICodeRunner, LocalEchoRunner>();
+// Code Runner (Judge0 + fallback)
+builder.Services.AddHttpClient<Quiz_Application_College.Services.Coding.Judge0CodeRunner>();
+builder.Services.AddScoped<Quiz_Application_College.Services.Coding.ICodeRunner>(sp =>
+{
+    var judge = sp.GetRequiredService<Quiz_Application_College.Services.Coding.Judge0CodeRunner>();
+    return judge.IsEnabled ? judge : new Quiz_Application_College.Services.Coding.NoopCodeRunner();
+});
 
 builder.Services.ConfigureApplicationCookie(options =>
 {

@@ -64,6 +64,23 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        //  POST: /Admin/Schedule/Delete
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(Guid id, Guid quizId)
+        {
+            var sched = await _db.QuizSchedules
+                .FirstOrDefaultAsync(s => s.Id == id && s.QuizId == quizId);
+            if (sched != null)
+            {
+                _db.QuizSchedules.Remove(sched);
+                await _db.SaveChangesAsync();
+                TempData["Ok"] = "Schedule deleted.";
+            }
+            // ✅ Return to the schedules list page
+            return RedirectToAction(nameof(Index));
+        }
+
         private async Task PopulateQuizzes()
         {
             var list = await _db.Quizzes

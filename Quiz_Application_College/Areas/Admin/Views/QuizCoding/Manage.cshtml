@@ -1,64 +1,114 @@
-﻿@model Quiz_Application_College.Areas.Admin.Controllers.QuizCodingController.Vm
+﻿@model Quiz_Application_College.Areas.Admin.Controllers.QuizCodingController.ManageVm
 @{
-    ViewData["Title"] = "Manage Coding Questions for Quiz";
+    ViewData["Title"] = $"Manage Coding Questions — {Model.QuizTitle}";
 }
-<div class="container mt-3">
-    <h3>Manage Coding Questions – @Model.QuizTitle</h3>
 
-    <form class="row g-2 mt-2" asp-area="Admin" asp-controller="QuizCoding" asp-action="Add" method="post">
+<div class="container mt-3">
+    <h3>Manage Coding Questions — @Model.QuizTitle</h3>
+
+    @if (TempData["Ok"] != null)
+    {
+        <div class="alert alert-success mt-2">@TempData["Ok"]</div>
+    }
+
+    <!-- Attach new coding question -->
+    <form asp-area="Admin" asp-controller="QuizCoding" asp-action="Attach" method="post" class="row g-2 mt-3">
+        @Html.AntiForgeryToken()
         <input type="hidden" name="quizId" value="@Model.QuizId" />
-        <div class="col-md-8">
+        <div class="col-md-7">
             <select name="codeQuestionId" class="form-select">
-                @foreach (var c in Model.All)
+                @foreach (var q in Model.Available)
                 {
-                    <option value="@c.Id">@c.Title</option>
+                    <option value="@q.Id">@q.Title</option>
                 }
             </select>
         </div>
         <div class="col-md-2">
-            <input class="form-control" name="order" type="number" value="0" />
+            <input type="number" name="order" class="form-control" value="0" />
         </div>
-        <div class="col-md-2">
-            <button class="btn btn-primary w-100">Attach</button>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Attach</button>
         </div>
     </form>
 
-    <h5 class="mt-4">Attached</h5>
-    <form asp-area="Admin" asp-controller="QuizCoding" asp-action="Sort" method="post">
-        <input type="hidden" name="quizId" value="@Model.QuizId" />
-        <table class="table table-sm table-striped align-middle">
-            <thead><tr><th>#</th><th>Title</th><th>Order</th><th class="text-end">Actions</th></tr></thead>
-            <tbody id="rows">
+    <hr class="my-3" />
+
+    <!-- Attached list (NO wrapping form here to avoid nested forms) -->
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="attachedTable">
+            <thead>
+                <tr>
+                    <th style="width:60px;">#</th>
+                    <th>Title</th>
+                    <th style="width:120px;">Order</th>
+                    <th style="width:130px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
                 @{
-                    int i = 1;
+                    var i = 0;
                     foreach (var a in Model.Attached)
                     {
                         <tr data-id="@a.CodeQuestionId">
-                            <td>@i</td>
-                            <td>@a.CodeQuestion?.Title</td>
-                            <td>@a.Order</td>
-                            <td class="text-end">
-                                <form asp-area="Admin" asp-controller="QuizCoding" asp-action="Remove" method="post" class="d-inline">
+                            <td>@(++i)</td>
+                            <td class="title">@a.Title</td>
+                            <td>
+                                <input type="number" class="form-control order-input" value="@a.Order" />
+                            </td>
+                            <td>
+                                <!-- Independent form; no nesting -->
+                                <form asp-area="Admin" asp-controller="QuizCoding" asp-action="Remove" method="post" class="d-inline"
+                                      onsubmit="return confirm('Remove this coding question from the quiz?');">
+                                    @Html.AntiForgeryToken()
                                     <input type="hidden" name="quizId" value="@Model.QuizId" />
                                     <input type="hidden" name="codeQuestionId" value="@a.CodeQuestionId" />
-                                    <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove?')">Remove</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                                 </form>
                             </td>
                         </tr>
-                        i++;
                     }
                 }
             </tbody>
         </table>
-        <input type="hidden" id="orderedIds" name="orderedIds" />
-        <button type="submit" class="btn btn-outline-secondary">Save Order</button>
+    </div>
+
+    <!-- Standalone SaveOrder form (hidden) -->
+    <form id="saveOrderForm" asp-area="Admin" asp-controller="QuizCoding" asp-action="SaveOrder" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="quizId" value="@Model.QuizId" />
+        <!-- JS will add items[i].CodeQuestionId + items[i].Order here -->
     </form>
+
+    <button id="saveOrderBtn" class="btn btn-success">Save Order</button>
+    <a asp-area="Admin" asp-controller="Quiz" asp-action="Index" class="btn btn-secondary ms-2">Back</a>
 </div>
 
-<script>
-    // Save order by current table sequence
-    document.querySelector('form[action$="Sort"]').addEventListener('submit', function(){
-      const ids = [...document.querySelectorAll('#rows tr')].map(tr => tr.getAttribute('data-id'));
-      document.getElementById('orderedIds').value = ids.join('&orderedIds=');
-    });
-</script>
+@section Scripts {
+    <script>
+        document.getElementById('saveOrderBtn').addEventListener('click', function () {
+            const form = document.getElementById('saveOrderForm');
+            // clear previous hidden inputs
+            while (form.children.length > 2) form.removeChild(form.lastElementChild);
+
+            const rows = document.querySelectorAll('#attachedTable tbody tr');
+            let idx = 0;
+            rows.forEach(row => {
+                const id = row.getAttribute('data-id');
+                const order = row.querySelector('.order-input').value;
+                const hid1 = document.createElement('input');
+                hid1.type = 'hidden';
+                hid1.name = `items[${idx}].CodeQuestionId`;
+                hid1.value = id;
+                form.appendChild(hid1);
+                const hid2 = document.createElement('input');
+                hid2.type = 'hidden';
+                hid2.name = `items[${idx}].Order`;
+                hid2.value = order;
+                form.appendChild(hid2);
+                idx++;
+            });
+
+            form.submit();
+        });
+    </script>
+}
