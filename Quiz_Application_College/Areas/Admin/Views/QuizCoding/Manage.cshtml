@@ -1,0 +1,64 @@
+﻿@model Quiz_Application_College.Areas.Admin.Controllers.QuizCodingController.Vm
+@{
+    ViewData["Title"] = "Manage Coding Questions for Quiz";
+}
+<div class="container mt-3">
+    <h3>Manage Coding Questions – @Model.QuizTitle</h3>
+
+    <form class="row g-2 mt-2" asp-area="Admin" asp-controller="QuizCoding" asp-action="Add" method="post">
+        <input type="hidden" name="quizId" value="@Model.QuizId" />
+        <div class="col-md-8">
+            <select name="codeQuestionId" class="form-select">
+                @foreach (var c in Model.All)
+                {
+                    <option value="@c.Id">@c.Title</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input class="form-control" name="order" type="number" value="0" />
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100">Attach</button>
+        </div>
+    </form>
+
+    <h5 class="mt-4">Attached</h5>
+    <form asp-area="Admin" asp-controller="QuizCoding" asp-action="Sort" method="post">
+        <input type="hidden" name="quizId" value="@Model.QuizId" />
+        <table class="table table-sm table-striped align-middle">
+            <thead><tr><th>#</th><th>Title</th><th>Order</th><th class="text-end">Actions</th></tr></thead>
+            <tbody id="rows">
+                @{
+                    int i = 1;
+                    foreach (var a in Model.Attached)
+                    {
+                        <tr data-id="@a.CodeQuestionId">
+                            <td>@i</td>
+                            <td>@a.CodeQuestion?.Title</td>
+                            <td>@a.Order</td>
+                            <td class="text-end">
+                                <form asp-area="Admin" asp-controller="QuizCoding" asp-action="Remove" method="post" class="d-inline">
+                                    <input type="hidden" name="quizId" value="@Model.QuizId" />
+                                    <input type="hidden" name="codeQuestionId" value="@a.CodeQuestionId" />
+                                    <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove?')">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        i++;
+                    }
+                }
+            </tbody>
+        </table>
+        <input type="hidden" id="orderedIds" name="orderedIds" />
+        <button type="submit" class="btn btn-outline-secondary">Save Order</button>
+    </form>
+</div>
+
+<script>
+    // Save order by current table sequence
+    document.querySelector('form[action$="Sort"]').addEventListener('submit', function(){
+      const ids = [...document.querySelectorAll('#rows tr')].map(tr => tr.getAttribute('data-id'));
+      document.getElementById('orderedIds').value = ids.join('&orderedIds=');
+    });
+</script>

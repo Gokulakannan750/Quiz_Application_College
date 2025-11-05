@@ -5,6 +5,10 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
 using System.Text.Json;
+using Quiz_Application_College.ViewModels.Coding;
+using Quiz_Application_College.Services.Coding.Runner;
+using Quiz_Application_College.Domain.Coding;
+
 
 namespace Quiz_Application_College.Areas.Student.Controllers
 {
@@ -217,6 +221,17 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                     : null;
             }
 
+            // --- CODING QUESTIONS (attach via QuizCodingQuestions) ---
+            var codingQuestions = await _db.QuizCodingQuestions
+                .Include(x => x.CodeQuestion)
+                .Where(x => x.QuizId == attempt.QuizId)
+                .OrderBy(x => x.Order)
+                .Select(x => x.CodeQuestion)
+                .ToListAsync();
+
+            ViewBag.CodingQuestions = codingQuestions;
+            // --- END CODING QUESTIONS ---
+
             return View(vm);
         }
 
@@ -406,5 +421,111 @@ namespace Quiz_Application_College.Areas.Student.Controllers
 
             return View(vm);
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveCode([FromBody] SaveCodeDto dto)
+        {
+            // Basic guards
+            var attempt = await _db.Attempts
+                .Include(a => a.Quiz)
+                .FirstOrDefaultAsync(a => a.Id == dto.AttemptId);
+
+            if (attempt == null || attempt.SubmittedAt != null)
+                return BadRequest("Attempt not found or already submitted.");
+
+            // Upsert AttemptCodeItem
+            var item = await _db.AttemptCodeItems
+                .FirstOrDefaultAsync(x => x.AttemptId == dto.AttemptId && x.CodeQuestionId == dto.CodeQuestionId);
+
+            if (item == null)
+            {
+                item = new AttemptCodeItem
+                {
+                    AttemptId = dto.AttemptId,
+                    CodeQuestionId = dto.CodeQuestionId,
+                    Language = dto.Language,
+                    SourceCode = dto.SourceCode,
+                    PassedCount = 0,
+                    TotalCount = 0,
+                    MarksAwarded = 0m
+                };
+                _db.AttemptCodeItems.Add(item);
+            }
+            else
+            {
+                item.Language = dto.Language;
+                item.SourceCode = dto.SourceCode;
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { ok = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RunCode([FromBody] RunCodeDto dto, [FromServices] ICodeRunner runner)
+        {
+            // Load attempt & question with tests
+            var attempt = await _db.Attempts
+                .FirstOrDefaultAsync(a => a.Id == dto.AttemptId);
+
+            if (attempt == null || attempt.SubmittedAt != null)
+                return BadRequest("Attempt not found or already submitted.");
+
+            var question = await _db.CodeQuestions
+                .Include(q => q.TestCases)
+                .FirstOrDefaultAsync(q => q.Id == dto.CodeQuestionId);
+
+            if (question == null)
+                return BadRequest("CodeQuestion not found.");
+
+            // Build runner request from DB tests
+            var tests = question.TestCases.Select(t => (t.Input, t.ExpectedOutput, t.Weight));
+            var req = new CodeRunRequest(dto.Language, dto.SourceCode, tests);
+
+            // Run
+            var result = await runner.RunAsync(req);
+
+            // Upsert AttemptCodeItem with result
+            var item = await _db.AttemptCodeItems
+                .FirstOrDefaultAsync(x => x.AttemptId == dto.AttemptId && x.CodeQuestionId == dto.CodeQuestionId);
+
+            if (item == null)
+            {
+                item = new AttemptCodeItem
+                {
+                    AttemptId = dto.AttemptId,
+                    CodeQuestionId = dto.CodeQuestionId,
+                    Language = dto.Language,
+                    SourceCode = dto.SourceCode
+                };
+                _db.AttemptCodeItems.Add(item);
+            }
+
+            item.PassedCount = result.passed;
+            item.TotalCount = result.total;
+            item.LastRunAt = DateTimeOffset.UtcNow;
+
+            // Compute marks proportionally by weights
+            var totalWeight = Math.Max(1, question.TestCases.Sum(t => t.Weight));
+            var passedWeight = question.TestCases
+                .Zip(Enumerable.Range(0, question.TestCases.Count), (t, idx) => new { t, idx })
+                .Where(x => x.idx < result.passed) // LocalEchoRunner increments sequentially in this stub
+                .Sum(x => x.t.Weight);
+
+            item.MarksAwarded = Math.Round(question.MaxMarks * (decimal)passedWeight / totalWeight, 2);
+
+            await _db.SaveChangesAsync();
+
+            return Json(new
+            {
+                passed = result.passed,
+                total = result.total,
+                compileLog = result.compileLog,
+                runLog = result.runLog
+            });
+        }
+
+
     }
 }

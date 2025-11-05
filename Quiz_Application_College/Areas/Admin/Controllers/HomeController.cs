@@ -51,11 +51,13 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             vm.RecentEnrollments = re.Select(e => new AdminDashboardVm.EnrollmentRow
             {
                 Id = e.Id,
+                QuizId = e.QuizId,                     // <— ADD THIS
                 Email = enrollEmails.TryGetValue(e.UserId, out var mail) ? mail : e.UserId,
                 QuizTitle = e.Quiz?.Title ?? "",
                 CreatedAt = e.CreatedAt,
                 Status = e.Status
             }).ToList();
+
 
             // Recent Attempts (latest 10)
             var ra = await _db.Attempts
@@ -74,12 +76,14 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             vm.RecentAttempts = ra.Select(a => new AdminDashboardVm.AttemptRow
             {
                 Id = a.Id,
+                QuizId = a.QuizId,                     // <— ADD THIS
                 Email = attemptEmails.TryGetValue(a.UserId, out var mail) ? mail : a.UserId,
                 QuizTitle = a.Quiz?.Title ?? "",
                 StartedAt = a.StartedAt,
                 SubmittedAt = a.SubmittedAt,
                 Score = a.Score
             }).ToList();
+
 
             return View(vm);
         }

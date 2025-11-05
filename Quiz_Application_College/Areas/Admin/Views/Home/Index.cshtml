@@ -3,148 +3,138 @@
     ViewData["Title"] = "Admin Dashboard";
 }
 
-<h1 class="mb-1">Admin Dashboard</h1>
-<p class="text-muted mb-4">Overview of activity & quick links.</p>
+<style>
+    .tile-link {
+        text-decoration: none;
+        color: inherit;
+    }
 
-<!-- ===== Small stats tiles ===== -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Total Quizzes</div>
-            <div class="dash-value">@Model.TotalQuizzes</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Quiz" asp-action="Index"></a>
+    .tile-card {
+        transition: transform .08s ease, box-shadow .08s ease;
+        cursor: pointer;
+    }
+
+        .tile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)
+        }
+</style>
+
+<div class="container mt-3">
+    <h2 class="mb-3">Admin Dashboard</h2>
+
+    <!-- Summary tiles (CLICKABLE) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <a asp-area="Admin" asp-controller="Quiz" asp-action="Index" class="tile-link">
+                <div class="card shadow-sm tile-card">
+                    <div class="card-body">
+                        <div class="text-muted small">Total Quizzes</div>
+                        <div class="fs-4">@Model?.TotalQuizzes</div>
+                        <div class="small text-primary mt-1">Open quiz list →</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a asp-area="Admin" asp-controller="Schedule" asp-action="Index" class="tile-link">
+                <div class="card shadow-sm tile-card">
+                    <div class="card-body">
+                        <div class="text-muted small">Open Schedules (Now)</div>
+                        <div class="fs-4">@Model?.OpenSchedulesNow</div>
+                        <div class="small text-primary mt-1">View schedules →</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a asp-area="Admin" asp-controller="Enrollment" asp-action="Index" class="tile-link">
+                <div class="card shadow-sm tile-card">
+                    <div class="card-body">
+                        <div class="text-muted small">Total Enrollments</div>
+                        <div class="fs-4">@Model?.TotalEnrollments</div>
+                        <div class="small text-primary mt-1">Manage enrollments →</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Coding Questions tile row -->
+
+        <div class="col-md-3">
+            <a asp-area="Admin" asp-controller="CodeQuestions" asp-action="Index" class="tile-link">
+                <div class="card shadow-sm tile-card">
+                    <div class="card-body">
+                        <div class="text-muted small">Coding Questions</div>
+                        <div class="fs-4">Manage</div>
+                        <div class="small text-primary mt-1">Create/Edit coding questions →</div>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
 
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Open Now</div>
-            <div class="dash-value">@Model.OpenSchedulesNow</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Schedule" asp-action="Index"></a>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Enrollments</div>
-            <div class="dash-value">@Model.TotalEnrollments</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Enrollment" asp-action="Index"></a>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Attempts Today</div>
-            <div class="dash-value">@Model.AttemptsToday</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Reports" asp-action="Index"></a>
-        </div>
-    </div>
-</div>
-
-<!-- ===== Action tiles (same style as your earlier mock) ===== -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Quizzes</div>
-            <div class="action-sub">Create and manage quizzes.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="Quiz" asp-action="Index">Open</a>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Schedules</div>
-            <div class="action-sub">Set when a quiz is available.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="Schedule" asp-action="Index">Open</a>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Enrollments</div>
-            <div class="action-sub">Grant/revoke student access.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="Enrollment" asp-action="Index">Open</a>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Question Bank</div>
-            <div class="action-sub">MCQ questions & options.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="QuestionBank" asp-action="Index">Open</a>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-area="Admin" asp-controller="QuestionBank" asp-action="Import">Import Questions (.xlsx)</a>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12 col-lg-6">
-        <div class="action-card h-100">
-            <div class="action-title">Results</div>
-            <div class="action-sub">View/export analytics.</div>
-            <button class="btn btn-outline-secondary w-100 mt-2" disabled>Coming soon</button>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6">
-        <div class="action-card h-100">
-            <div class="action-title">Reports</div>
-            <div class="action-sub">Download Excel reports.</div>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-area="Admin" asp-controller="Reports" asp-action="EnrollmentsXlsx">Enrollments.xlsx</a>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-area="Admin" asp-controller="Reports" asp-action="AttemptsXlsx">Attempts.xlsx</a>
-        </div>
-    </div>
-</div>
-
-<!-- ===== Recent lists (keep compact) ===== -->
-<div class="row g-3">
-    <div class="col-12 col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Recent Enrollments</span>
-                <a class="btn btn-sm btn-outline-secondary" asp-area="Admin" asp-controller="Enrollment" asp-action="Index">Open</a>
-            </div>
-            <ul class="list-group list-group-flush">
-                @if (Model.RecentEnrollments.Count == 0)
+    <!-- Recent Enrollments -->
+    <h5 class="mt-4">Recent Enrollments</h5>
+    <table class="table table-sm table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Quiz</th>
+                <th>Enrolled At</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model?.RecentEnrollments != null && Model.RecentEnrollments.Any())
+            {
+                foreach (var en in Model.RecentEnrollments)
                 {
-                    <li class="list-group-item">No enrollments yet.</li>
+                    <tr>
+                        <td>@en.Email</td>
+                        <td>@en.QuizTitle</td>
+                        <td>@en.CreatedAt.LocalDateTime</td>
+                        <td>@en.Status</td>
+                    </tr>
                 }
-                else
-                {
-                    @foreach (var e in Model.RecentEnrollments)
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@e.Email</span>
-                            <span class="text-muted">@e.QuizTitle</span>
-                        </li>
-                    }
-                }
-            </ul>
-        </div>
-    </div>
+            }
+            else
+            {
+                <tr><td colspan="5" class="text-muted">No enrollments.</td></tr>
+            }
+        </tbody>
+    </table>
 
-    <div class="col-12 col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Recent Attempts</span>
-                <a class="btn btn-sm btn-outline-secondary" asp-area="Admin" asp-controller="Reports" asp-action="Index">Open</a>
-            </div>
-            <ul class="list-group list-group-flush">
-                @if (Model.RecentAttempts.Count == 0)
+    <!-- Recent Attempts -->
+    <h5 class="mt-4">Recent Attempts</h5>
+    <table class="table table-sm table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Quiz</th>
+                <th>Started</th>
+                <th>Submitted</th>
+                <th>Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model?.RecentAttempts != null && Model.RecentAttempts.Any())
+            {
+                foreach (var at in Model.RecentAttempts)
                 {
-                    <li class="list-group-item">No attempts yet.</li>
+                    <tr>
+                        <td>@at.Email</td>
+                        <td>@at.QuizTitle</td>
+                        <td>@at.StartedAt.LocalDateTime</td>
+                        <td>@(at.SubmittedAt?.LocalDateTime.ToString() ?? "-")</td>
+                        <td>@at.Score</td>
+                    </tr>
                 }
-                else
-                {
-                    @foreach (var a in Model.RecentAttempts)
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@a.Email</span>
-                            <span class="text-muted">@a.QuizTitle</span>
-                        </li>
-                    }
-                }
-            </ul>
-        </div>
-    </div>
+            }
+            else
+            {
+                <tr><td colspan="6" class="text-muted">No attempts.</td></tr>
+            }
+        </tbody>
+    </table>
 </div>
