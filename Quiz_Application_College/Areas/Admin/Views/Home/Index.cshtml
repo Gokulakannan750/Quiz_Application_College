@@ -1,150 +1,57 @@
-﻿@model Quiz_Application_College.ViewModels.AdminDashboardVm
+﻿@using Microsoft.EntityFrameworkCore
+@inject Quiz_Application_College.Data.ApplicationDbContext Db
 @{
     ViewData["Title"] = "Admin Dashboard";
+    var totalQuizzes = Db.Quizzes.Count();
+    var openSchedules = Db.QuizSchedules
+        .Count(s => s.StartAt <= DateTimeOffset.UtcNow && s.EndAt >= DateTimeOffset.UtcNow);
+    var totalEnrollments = Db.Enrollments.Count();
 }
 
-<h1 class="mb-1">Admin Dashboard</h1>
-<p class="text-muted mb-4">Overview of activity & quick links.</p>
+<div class="container mt-3">
+    <h2>Admin Dashboard</h2>
 
-<!-- ===== Small stats tiles ===== -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Total Quizzes</div>
-            <div class="dash-value">@Model.TotalQuizzes</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Quiz" asp-action="Index"></a>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Open Now</div>
-            <div class="dash-value">@Model.OpenSchedulesNow</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Schedule" asp-action="Index"></a>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Enrollments</div>
-            <div class="dash-value">@Model.TotalEnrollments</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Enrollment" asp-action="Index"></a>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-3">
-        <div class="dash-card position-relative">
-            <div class="dash-label">Attempts Today</div>
-            <div class="dash-value">@Model.AttemptsToday</div>
-            <a class="stretched-link" asp-area="Admin" asp-controller="Reports" asp-action="Index"></a>
-        </div>
-    </div>
-</div>
-
-<!-- ===== Action tiles (same style as your earlier mock) ===== -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Quizzes</div>
-            <div class="action-sub">Create and manage quizzes.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="Quiz" asp-action="Index">Open</a>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Schedules</div>
-            <div class="action-sub">Set when a quiz is available.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="Schedule" asp-action="Index">Open</a>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Enrollments</div>
-            <div class="action-sub">Grant/revoke student access.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="Enrollment" asp-action="Index">Open</a>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6 col-xl-3">
-        <div class="action-card h-100">
-            <div class="action-title">Question Bank</div>
-            <div class="action-sub">MCQ questions & options.</div>
-            <a class="btn btn-primary w-100 mt-2" asp-area="Admin" asp-controller="QuestionBank" asp-action="Index">Open</a>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-area="Admin" asp-controller="QuestionBank" asp-action="Import">Import Questions (.xlsx)</a>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12 col-lg-6">
-        <div class="action-card h-100">
-            <div class="action-title">Results</div>
-            <div class="action-sub">View/export analytics.</div>
-            <button class="btn btn-outline-secondary w-100 mt-2" disabled>Coming soon</button>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6">
-        <div class="action-card h-100">
-            <div class="action-title">Reports</div>
-            <div class="action-sub">Download Excel reports.</div>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-area="Admin" asp-controller="Reports" asp-action="EnrollmentsXlsx">Enrollments.xlsx</a>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-area="Admin" asp-controller="Reports" asp-action="AttemptsXlsx">Attempts.xlsx</a>
-        </div>
-    </div>
-</div>
-
-<!-- ===== Recent lists (keep compact) ===== -->
-<div class="row g-3">
-    <div class="col-12 col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Recent Enrollments</span>
-                <a class="btn btn-sm btn-outline-secondary" asp-area="Admin" asp-controller="Enrollment" asp-action="Index">Open</a>
+    <div class="row g-3 mt-1">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">Total Quizzes</div>
+                    <h3 class="my-2">@totalQuizzes</h3>
+                    <a asp-area="Admin" asp-controller="Quiz" asp-action="Index" class="stretched-link">Open quiz list →</a>
+                </div>
             </div>
-            <ul class="list-group list-group-flush">
-                @if (Model.RecentEnrollments.Count == 0)
-                {
-                    <li class="list-group-item">No enrollments yet.</li>
-                }
-                else
-                {
-                    @foreach (var e in Model.RecentEnrollments)
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@e.Email</span>
-                            <span class="text-muted">@e.QuizTitle</span>
-                        </li>
-                    }
-                }
-            </ul>
         </div>
-    </div>
 
-    <div class="col-12 col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Recent Attempts</span>
-                <a class="btn btn-sm btn-outline-secondary" asp-area="Admin" asp-controller="Reports" asp-action="Index">Open</a>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">Open Schedules (Now)</div>
+                    <h3 class="my-2">@openSchedules</h3>
+                    <a asp-area="Admin" asp-controller="Schedule" asp-action="Index" class="stretched-link">View schedules →</a>
+                </div>
             </div>
-            <ul class="list-group list-group-flush">
-                @if (Model.RecentAttempts.Count == 0)
-                {
-                    <li class="list-group-item">No attempts yet.</li>
-                }
-                else
-                {
-                    @foreach (var a in Model.RecentAttempts)
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@a.Email</span>
-                            <span class="text-muted">@a.QuizTitle</span>
-                        </li>
-                    }
-                }
-            </ul>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">Total Enrollments</div>
+                    <h3 class="my-2">@totalEnrollments</h3>
+                    <a asp-area="Admin" asp-controller="Enrollment" asp-action="Index" class="stretched-link">Manage enrollments →</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">Reports</div>
+                    <h3 class="my-2">Manage</h3>
+                    <a asp-area="Admin" asp-controller="Reports" asp-action="Index" class="stretched-link">
+                        Create/Edit reports →
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>

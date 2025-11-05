@@ -17,6 +17,7 @@ namespace Quiz_Application_College.ViewModels
         public class EnrollmentRow
         {
             public Guid Id { get; set; }
+            public Guid QuizId { get; set; }             // <— NEW
             public string Email { get; set; } = "";
             public string QuizTitle { get; set; } = "";
             public DateTimeOffset CreatedAt { get; set; }
@@ -26,6 +27,7 @@ namespace Quiz_Application_College.ViewModels
         public class AttemptRow
         {
             public Guid Id { get; set; }
+            public Guid QuizId { get; set; }             // <— NEW
             public string Email { get; set; } = "";
             public string QuizTitle { get; set; } = "";
             public DateTimeOffset StartedAt { get; set; }

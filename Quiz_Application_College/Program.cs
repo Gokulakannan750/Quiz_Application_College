@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
-using Microsoft.AspNetCore.Http.Features;
+using Quiz_Application_College.Services.Coding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,19 +20,20 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 1024L * 1024L * 100L; // 100 MB
 });
 
+// Code Runner (Judge0 + fallback)
+builder.Services.AddHttpClient<Quiz_Application_College.Services.Coding.Judge0CodeRunner>();
+builder.Services.AddScoped<Quiz_Application_College.Services.Coding.ICodeRunner>(sp =>
+{
+    var judge = sp.GetRequiredService<Quiz_Application_College.Services.Coding.Judge0CodeRunner>();
+    return judge.IsEnabled ? judge : new Quiz_Application_College.Services.Coding.NoopCodeRunner();
+});
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Identity/Account/Login";
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
-});
-
-// --- Authorization Policies ---
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("IsAdmin", policy =>
-        policy.RequireRole("Admin", "Faculty", "Examiner", "Moderator"));
 });
 
 // --- Authorization Policies ---
@@ -56,6 +57,7 @@ builder.Services
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<Quiz_Application_College.Services.Student.AvailableQuizService>();
 builder.Services.AddScoped<Quiz_Application_College.Services.Reports.ExportService>();
+
 
 var app = builder.Build();
 
@@ -94,11 +96,6 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "areas",
     pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
-
-// Default MVC route
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // Default MVC route -> go through Dashboard
 app.MapControllerRoute(

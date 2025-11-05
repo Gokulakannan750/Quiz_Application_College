@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Quiz_Application_College.Data;
 
@@ -11,9 +12,11 @@ using Quiz_Application_College.Data;
 namespace Quiz_Application_College.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251105074739_Quiz_Coding_Link")]
+    partial class Quiz_Coding_Link
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -392,13 +395,11 @@ namespace Quiz_Application_College.Migrations
                         .HasColumnType("bit");
 
                     b.Property<int>("Weight")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CodeQuestionId", "IsHidden");
+                    b.HasIndex("CodeQuestionId");
 
                     b.ToTable("CodeTestCases");
                 });

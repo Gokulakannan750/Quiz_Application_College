@@ -1,42 +1,96 @@
 ﻿@model Quiz_Application_College.ViewModels.ExamReviewVm
+@using Microsoft.EntityFrameworkCore
+@inject Quiz_Application_College.Data.ApplicationDbContext Db
+
 @{
     ViewData["Title"] = "Review";
+    var attemptId = (ViewBag.AttemptId is Guid g && g != Guid.Empty) ? g : Guid.Empty;
 }
-<h2>@Model.QuizTitle — Review</h2>
-<div class="alert alert-info">Total Score: <strong>@Model.TotalScore</strong></div>
 
-@foreach (var i in Model.Items)
-{
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5>Q@i.Number. @i.Question</h5>
-            <ol type="A">
-                @foreach (var o in i.Options)
-                {
-                    var isCorrect = i.CorrectOptionId == o.Id;
-                    var isYours = i.YourOptionId == o.Id;
-                    <li>
-                        @o.Text
-                        @if (isCorrect)
-                        {
-                            <span class="badge bg-success ms-2">Correct</span>
-                        }
-                        @if (isYours && !isCorrect)
-                        {
-                            <span class="badge bg-danger ms-2">Your Answer</span>
-                        }
-                        @if (isYours && isCorrect)
-                        {
-                            <span class="badge bg-primary ms-2">You chose</span>
-                        }
-                    </li>
-                }
-            </ol>
-            <div>
-                Marks: @i.Marks &nbsp; | &nbsp; Earned: <strong>@i.Earned</strong>
-            </div>
-        </div>
+<div class="container mt-4">
+    <h3 class="mb-3">Review — @Model.QuizTitle</h3>
+
+    <div class="alert alert-info d-flex justify-content-between align-items-center">
+        <div><strong>Total Score:</strong> @Model.TotalScore</div>
+        <a asp-area="Student" asp-controller="Dashboard" asp-action="Index" class="btn btn-sm btn-outline-primary">Back to Dashboard</a>
     </div>
-}
 
-<a class="btn btn-secondary" asp-area="Student" asp-controller="Dashboard" asp-action="Index">Back to My Quizzes</a>
+    <!-- MCQ Review -->
+    <h4 class="mt-4">MCQ</h4>
+    @if (Model.Items?.Any() == true)
+    {
+        <ol class="list-group list-group-numbered">
+            @foreach (var item in Model.Items)
+            {
+                var isCorrect = item.YourOptionId.HasValue && item.CorrectOptionId.HasValue && item.YourOptionId.Value == item.CorrectOptionId.Value;
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <div class="me-2"><strong>@item.Question</strong></div>
+                        <div>
+                            @if (isCorrect)
+                            {
+                                <span class="badge bg-success">✓ @item.Earned / @item.Marks</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">✗ @item.Earned / @item.Marks</span>
+                            }
+                        </div>
+                    </div>
+                    <ul class="mt-2">
+                        @foreach (var opt in item.Options)
+                        {
+                            var classes = "mb-1";
+                            if (item.CorrectOptionId.HasValue && opt.Id == item.CorrectOptionId.Value) classes += " text-success fw-bold";
+                            if (item.YourOptionId.HasValue && opt.Id == item.YourOptionId.Value && !isCorrect) classes += " text-danger";
+                            <li class="@classes">@opt.Text</li>
+                        }
+                    </ul>
+                </li>
+            }
+        </ol>
+    }
+    else
+    {
+        <div class="text-muted">No MCQ items.</div>
+    }
+
+    <!-- Coding Review -->
+    @if (attemptId != Guid.Empty)
+    {
+        var codingItems = await Db.AttemptCodeItems
+        .Where(x => x.AttemptId == attemptId)
+        .Join(Db.CodeQuestions, aci => aci.CodeQuestionId, cq => cq.Id, (aci, cq) => new { aci, cq })
+        .OrderBy(x => x.cq.Title)
+        .ToListAsync();
+
+        if (codingItems.Any())
+        {
+            <hr class="my-4" />
+            <h4>Coding</h4>
+            <div class="list-group">
+                @foreach (var row in codingItems)
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <strong>@row.cq.Title</strong>
+                            <span>Marks: @row.aci.MarksAwarded / @row.cq.MaxMarks</span>
+                        </div>
+                        <div class="small text-muted">
+                            Language: @row.aci.Language |
+                            Tests Passed: @row.aci.PassedCount / @row.aci.TotalCount
+                            @if (row.aci.LastRunAt != null)
+                            {
+                                <text>| Last Run: @row.aci.LastRunAt.Value.LocalDateTime</text>
+                            }
+                        </div>
+                        <details class="mt-2">
+                            <summary>Show submitted code</summary>
+                            <pre class="mt-2">@row.aci.SourceCode</pre>
+                        </details>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>

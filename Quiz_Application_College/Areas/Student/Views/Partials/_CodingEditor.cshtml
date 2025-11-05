@@ -1,0 +1,133 @@
+﻿@using System.Text.Json
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@model dynamic
+@*
+Model expected fields:
+- Id: Guid (CodeQuestionId)
+- Title: string
+- PromptHtml: string (safe HTML) OR Prompt (plain)
+- AllowedLanguages: IEnumerable<string>
+- DefaultLanguage: string
+- StarterCodeJson: string (JSON map lang -> code) or null
+- AttemptId: Guid
+*@
+@{
+    string qid = Model.Id.ToString();
+    string editorId = $"editor-{qid}";
+    string langSelectId = $"lang-{qid}";
+
+    var starterMap = new Dictionary<string, string>();
+    try
+    {
+        if (!string.IsNullOrWhiteSpace(Model.StarterCodeJson))
+            starterMap = JsonSerializer.Deserialize<Dictionary<string, string>>(Model.StarterCodeJson)
+                         ?? new Dictionary<string, string>();
+    }
+    catch { }
+
+    string initialLang = Model.DefaultLanguage ?? (Model.AllowedLanguages?.FirstOrDefault() ?? "python");
+    string initialCode = starterMap.TryGetValue(initialLang, out var sc) ? sc : "";
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+            <div><strong>@Model.Title</strong></div>
+            <div class="d-flex gap-2">
+                <select id="@langSelectId" class="form-select form-select-sm" style="max-width:220px">
+                    @foreach (var lang in (IEnumerable<string>)Model.AllowedLanguages)
+                    {
+                        <option value="@lang" selected="@(lang == initialLang ? "selected" : null)">@lang</option>
+                    }
+                </select>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="saveCode('@qid')">Save</button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="runCode('@qid')">Run</button>
+            </div>
+        </div>
+
+        <div class="mb-2">
+            @if (!string.IsNullOrWhiteSpace(Model.PromptHtml))
+            {
+                @Html.Raw(Model.PromptHtml)
+            }
+            else
+            {
+                <pre class="mb-0">@Model.Prompt</pre>
+            }
+        </div>
+
+        <div id="@editorId" style="height:380px;border:1px solid #333;border-radius:.375rem;"></div>
+        <input type="hidden" id="__af-@qid" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+        <div id="runout-@qid" class="mt-2 small text-muted"></div>
+    </div>
+</div>
+
+<script>
+    // Ensure Monaco loader added once
+    (function ensureMonaco() {
+      if (window.__monacoLoaderInjected) return;
+      window.__monacoLoaderInjected = true;
+      const s1 = document.createElement('script');
+      s1.src = "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js";
+      s1.onload = function(){
+        if (window.require) {
+          window.require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' }});
+        }
+      };
+      document.head.appendChild(s1);
+      const s2 = document.createElement('script');
+      s2.src = "/js/code-editor.js";
+      document.head.appendChild(s2);
+    })();
+
+    document.addEventListener('DOMContentLoaded', function(){
+      // init editor after loader ready
+      const ready = () => window.require && window.monaco && window.initMonaco;
+      const wait = setInterval(function(){
+        if (ready()) { clearInterval(wait); window.initMonaco('@editorId', '@initialLang', @Html.Raw(JsonSerializer.Serialize(initialCode))); }
+      }, 50);
+    });
+
+    async function saveCode(qid){
+      const lang = document.getElementById('lang-' + qid).value;
+      const src  = window.getCode('editor-' + qid) || '';
+      const token = document.getElementById('__af-' + qid)?.value || '';
+      const payload = {
+        attemptId: '@Model.AttemptId',
+        codeQuestionId: qid,
+        language: lang,
+        sourceCode: src
+      };
+      const r = await fetch('@Url.Action("SaveCode", "Exam", new { area = "Student" })', {
+        method: 'POST',
+        headers: {
+          'Content-Type':'application/json',
+          'RequestVerificationToken': token
+        },
+        body: JSON.stringify(payload)
+      });
+      document.getElementById('runout-' + qid).innerText = r.ok ? 'Saved.' : 'Save failed.';
+    }
+
+    async function runCode(qid){
+      const lang = document.getElementById('lang-' + qid).value;
+      const src  = window.getCode('editor-' + qid) || '';
+      const token = document.getElementById('__af-' + qid)?.value || '';
+      const payload = {
+        attemptId: '@Model.AttemptId',
+        codeQuestionId: qid,
+        language: lang,
+        sourceCode: src
+      };
+      const res = await fetch('@Url.Action("RunCode", "Exam", new { area = "Student" })', {
+        method: 'POST',
+        headers: {
+          'Content-Type':'application/json',
+          'RequestVerificationToken': token
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      document.getElementById('runout-' + qid).innerText = `${json.passed}/${json.total} passed\n${json.runLog ?? ''}`;
+    }
+</script>

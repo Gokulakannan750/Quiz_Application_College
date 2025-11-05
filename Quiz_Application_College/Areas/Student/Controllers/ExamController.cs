@@ -5,6 +5,10 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
 using System.Text.Json;
+using Quiz_Application_College.ViewModels.Coding;
+using Quiz_Application_College.Domain.Coding;
+using Quiz_Application_College.Services.Coding;
+
 
 namespace Quiz_Application_College.Areas.Student.Controllers
 {
@@ -217,6 +221,17 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                     : null;
             }
 
+            // --- CODING QUESTIONS (attach via QuizCodingQuestions) ---
+            var codingQuestions = await _db.QuizCodingQuestions
+                .Include(x => x.CodeQuestion)
+                .Where(x => x.QuizId == attempt.QuizId)
+                .OrderBy(x => x.Order)
+                .Select(x => x.CodeQuestion)
+                .ToListAsync();
+
+            ViewBag.CodingQuestions = codingQuestions;
+            // --- END CODING QUESTIONS ---
+
             return View(vm);
         }
 
@@ -260,7 +275,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(Guid attemptId)
+        public async Task<IActionResult> Submit(Guid attemptId, [FromServices] ICodeRunner runner)
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
 
@@ -268,15 +283,13 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                 .FirstOrDefaultAsync(a => a.Id == attemptId && a.UserId == userId);
             if (attempt == null) return BadRequest();
 
-            // Already auto-submitted?
             if (attempt.SubmittedAt != null)
                 return RedirectToAction(nameof(Result), new { attemptId });
 
-            // Hard timer: if expired, auto-submit now
             if (await AutoSubmitIfExpiredAsync(attempt))
                 return RedirectToAction(nameof(Result), new { attemptId });
 
-            // Score within time
+            // ===== MCQ scoring (existing logic) =====
             var qids = await _db.QuizQuestions
                 .Where(qq => qq.QuizId == attempt.QuizId)
                 .Select(qq => qq.QuestionId)
@@ -291,7 +304,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                 .Where(r => r.AttemptId == attempt.Id)
                 .ToListAsync();
 
-            decimal score = 0m;
+            decimal mcqScore = 0m;
             bool negOn = attempt.Quiz!.EnableNegativeMarking;
             var negRate = 0.25m;
 
@@ -304,14 +317,99 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                     var chosen = JsonSerializer.Deserialize<Guid?>(r.ResponseJson);
                     if (chosen.HasValue)
                     {
-                        if (chosen.Value == correct) score += q.Marks;
-                        else if (negOn) score -= (q.Marks * negRate);
+                        if (chosen.Value == correct) mcqScore += q.Marks;
+                        else if (negOn) mcqScore -= (q.Marks * negRate);
                     }
                 }
             }
-            if (score < 0) score = 0m;
+            if (mcqScore < 0) mcqScore = 0m;
 
-            attempt.Score = score;
+            // ===== Coding scoring (re-run all tests at submit to freeze marks) =====
+            decimal codingTotal = 0m;
+
+            var links = await _db.QuizCodingQuestions
+                .Where(x => x.QuizId == attempt.QuizId)
+                .Select(x => x.CodeQuestionId)
+                .ToListAsync();
+
+            foreach (var cqId in links)
+            {
+                var cq = await _db.CodeQuestions
+                    .Include(x => x.TestCases)
+                    .FirstOrDefaultAsync(x => x.Id == cqId);
+                if (cq == null || cq.TestCases.Count == 0) continue;
+
+                var item = await _db.AttemptCodeItems
+                    .FirstOrDefaultAsync(x => x.AttemptId == attempt.Id && x.CodeQuestionId == cqId);
+
+                var lang = string.IsNullOrWhiteSpace(item?.Language) ? "python" : item!.Language;
+                var src = item?.SourceCode ?? "";
+
+                int total = cq.TestCases.Count;
+                int passed = 0;
+
+                var totalWeight = Math.Max(1, cq.TestCases.Sum(t => t.Weight <= 0 ? 1 : t.Weight));
+                int passedWeight = 0;
+
+                if (!string.IsNullOrWhiteSpace(src))
+                {
+                    foreach (var t in cq.TestCases)
+                    {
+                        var req = new CodeRunRequest
+                        {
+                            Language = lang,
+                            SourceCode = src,
+                            Stdin = t.Input ?? "",
+                            ExpectedOutput = t.ExpectedOutput ?? ""
+                        };
+
+                        var res = await runner.RunAsync(req);
+
+                        var trimmedOut = (res.Stdout ?? string.Empty).TrimEnd('\r', '\n');
+                        var trimmedExp = (t.ExpectedOutput ?? string.Empty).TrimEnd('\r', '\n');
+
+                        bool isPass = res.Succeeded ||
+                                      (string.IsNullOrWhiteSpace(res.Stderr) &&
+                                       string.IsNullOrWhiteSpace(res.CompileOutput) &&
+                                       string.Equals(trimmedOut, trimmedExp, StringComparison.Ordinal));
+
+                        if (isPass)
+                        {
+                            passed++;
+                            passedWeight += (t.Weight <= 0 ? 1 : t.Weight);
+                        }
+                    }
+                }
+
+                var earned = Math.Round((cq.MaxMarks <= 0 ? 0 : cq.MaxMarks) * (decimal)passedWeight / totalWeight, 2);
+
+                if (item == null)
+                {
+                    item = new AttemptCodeItem
+                    {
+                        AttemptId = attempt.Id,
+                        CodeQuestionId = cqId,
+                        Language = lang,
+                        SourceCode = src,
+                        PassedCount = passed,
+                        TotalCount = total,
+                        MarksAwarded = earned,
+                        LastRunAt = DateTimeOffset.UtcNow
+                    };
+                    _db.AttemptCodeItems.Add(item);
+                }
+                else
+                {
+                    item.PassedCount = passed;
+                    item.TotalCount = total;
+                    item.MarksAwarded = earned;
+                    item.LastRunAt = DateTimeOffset.UtcNow;
+                }
+
+                codingTotal += earned;
+            }
+
+            attempt.Score = mcqScore + codingTotal;
             attempt.SubmittedAt = DateTimeOffset.Now;
             await _db.SaveChangesAsync();
 
@@ -320,6 +418,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers
 
             return RedirectToAction(nameof(Submitted), new { attemptId });
         }
+
 
         public async Task<IActionResult> Result(Guid attemptId)
         {
@@ -404,7 +503,149 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                 });
             }
 
+            ViewBag.AttemptId = attemptId; // <-- used by the view’s coding section
             return View(vm);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveCode([FromBody] SaveCodeDto dto)
+        {
+            var attempt = await _db.Attempts
+                .Include(a => a.Quiz)
+                .FirstOrDefaultAsync(a => a.Id == dto.AttemptId);
+
+            if (attempt == null || attempt.SubmittedAt != null)
+                return BadRequest("Attempt not found or already submitted.");
+
+            var item = await _db.AttemptCodeItems
+                .FirstOrDefaultAsync(x => x.AttemptId == dto.AttemptId && x.CodeQuestionId == dto.CodeQuestionId);
+
+            if (item == null)
+            {
+                item = new AttemptCodeItem
+                {
+                    AttemptId = dto.AttemptId,
+                    CodeQuestionId = dto.CodeQuestionId,
+                    Language = string.IsNullOrWhiteSpace(dto.Language) ? "python" : dto.Language,
+                    SourceCode = dto.SourceCode ?? "",
+                    PassedCount = 0,
+                    TotalCount = 0,
+                    MarksAwarded = 0m,
+                    LastRunAt = null
+                };
+                _db.AttemptCodeItems.Add(item);
+            }
+            else
+            {
+                item.Language = string.IsNullOrWhiteSpace(dto.Language) ? item.Language : dto.Language;
+                item.SourceCode = dto.SourceCode ?? item.SourceCode;
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { ok = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RunCode([FromBody] RunCodeDto dto, [FromServices] ICodeRunner runner)
+        {
+            var attempt = await _db.Attempts.FirstOrDefaultAsync(a => a.Id == dto.AttemptId);
+            if (attempt == null || attempt.SubmittedAt != null)
+                return BadRequest("Attempt not found or already submitted.");
+
+            var question = await _db.CodeQuestions
+                .Include(q => q.TestCases)
+                .FirstOrDefaultAsync(q => q.Id == dto.CodeQuestionId);
+            if (question == null)
+                return BadRequest("CodeQuestion not found.");
+            if (question.TestCases.Count == 0)
+                return BadRequest("No test cases configured.");
+
+            // Ensure we have an AttemptCodeItem row
+            var item = await _db.AttemptCodeItems
+                .FirstOrDefaultAsync(x => x.AttemptId == dto.AttemptId && x.CodeQuestionId == dto.CodeQuestionId);
+            if (item == null)
+            {
+                item = new AttemptCodeItem
+                {
+                    AttemptId = dto.AttemptId,
+                    CodeQuestionId = dto.CodeQuestionId,
+                    Language = string.IsNullOrWhiteSpace(dto.Language) ? "python" : dto.Language,
+                    SourceCode = dto.SourceCode ?? ""
+                };
+                _db.AttemptCodeItems.Add(item);
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                item.Language = string.IsNullOrWhiteSpace(dto.Language) ? item.Language : dto.Language;
+                item.SourceCode = dto.SourceCode ?? item.SourceCode;
+                await _db.SaveChangesAsync();
+            }
+
+            // Run each test individually and aggregate results
+            int total = question.TestCases.Count;
+            int passed = 0;
+
+            var totalWeight = Math.Max(1, question.TestCases.Sum(t => t.Weight <= 0 ? 1 : t.Weight));
+            int passedWeight = 0;
+
+            var compileLines = new List<string>();
+            var runLines = new List<string>();
+
+            foreach (var t in question.TestCases)
+            {
+                var req = new CodeRunRequest
+                {
+                    Language = item.Language ?? "python",
+                    SourceCode = item.SourceCode ?? "",
+                    Stdin = t.Input ?? "",
+                    ExpectedOutput = t.ExpectedOutput ?? ""
+                };
+
+                var res = await runner.RunAsync(req);
+
+                // consider it a pass if status Accepted OR clean stderr/compile and expected output matches trimmed stdout
+                var trimmedOut = (res.Stdout ?? string.Empty).TrimEnd('\r', '\n');
+                var trimmedExp = (t.ExpectedOutput ?? string.Empty).TrimEnd('\r', '\n');
+
+                bool isPass = res.Succeeded ||
+                              (string.IsNullOrWhiteSpace(res.Stderr) &&
+                               string.IsNullOrWhiteSpace(res.CompileOutput) &&
+                               string.Equals(trimmedOut, trimmedExp, StringComparison.Ordinal));
+
+                if (isPass)
+                {
+                    passed++;
+                    passedWeight += (t.Weight <= 0 ? 1 : t.Weight);
+                }
+
+                if (!string.IsNullOrWhiteSpace(res.CompileOutput))
+                    compileLines.Add(res.CompileOutput);
+                if (!string.IsNullOrWhiteSpace(res.Stderr))
+                    runLines.Add(res.Stderr);
+                if (!string.IsNullOrWhiteSpace(res.Stdout))
+                    runLines.Add(res.Stdout);
+            }
+
+            // marks
+            var earned = Math.Round((question.MaxMarks <= 0 ? 0 : question.MaxMarks) * (decimal)passedWeight / totalWeight, 2);
+
+            item.PassedCount = passed;
+            item.TotalCount = total;
+            item.MarksAwarded = earned;
+            item.LastRunAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Json(new
+            {
+                passed,
+                total,
+                compileLog = string.Join("\n", compileLines),
+                runLog = string.Join("\n", runLines)
+            });
         }
     }
 }

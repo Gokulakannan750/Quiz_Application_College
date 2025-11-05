@@ -1,0 +1,51 @@
+﻿@model List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div class="container mt-3">
+    <h2>Reports</h2>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Download marks by quiz</h5>
+                    <form method="get" asp-area="Admin" asp-controller="Reports" asp-action="AttemptsByQuizXlsx" class="row g-2">
+                        <div class="col-9">
+                            <select name="quizId" class="form-select" required>
+                                <option value="">-- Choose a quiz --</option>
+                                @foreach (var q in Model)
+                                {
+                                    <option value="@q.Value">@q.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <button type="submit" class="btn btn-primary w-100">Download</button>
+                        </div>
+                    </form>
+                    <div class="small text-muted mt-2">
+                        Exports student email, start/submitted time, and total score for the chosen quiz.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Bulk exports (all quizzes)</h5>
+                    <a class="btn btn-outline-secondary me-2"
+                       asp-area="Admin" asp-controller="Reports" asp-action="AttemptsXlsx">
+                        All Attempts.xlsx
+                    </a>
+                    <a class="btn btn-outline-secondary"
+                       asp-area="Admin" asp-controller="Reports" asp-action="EnrollmentsXlsx">
+                        All Enrollments.xlsx
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
