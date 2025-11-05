@@ -25,6 +25,15 @@ namespace Quiz_Application_College.Areas.Student.Controllers
                 .Where(s => s.StartAt <= now && now <= s.EndAt).CountAsync();
 
             ViewBag.AttemptsCount = await _db.Attempts.Where(a => a.UserId == userId).CountAsync();
+            
+            // RESUME ATTEMPT: latest unsubmitted attempt for this user
+            var resumeAttempt = await _db.Attempts
+                .Include(a => a.Quiz)
+                .Where(a => a.UserId == userId && a.SubmittedAt == null)
+                .OrderByDescending(a => a.StartedAt)
+                .FirstOrDefaultAsync();
+
+            ViewBag.ResumeAttempt = resumeAttempt;
 
             return View();
         }
