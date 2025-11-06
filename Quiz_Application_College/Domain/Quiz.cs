@@ -2,6 +2,12 @@
 
 namespace Quiz_Application_College.Domain
 {
+    public enum QuizType
+    {
+        Mcq = 1,
+        Coding = 2
+    }
+
     public class Quiz
     {
         public Guid Id { get; set; } = Guid.NewGuid();
@@ -36,6 +42,8 @@ namespace Quiz_Application_College.Domain
         public bool ShuffleOptions { get; set; } = true;
         public bool ShowReviewOnSubmit { get; set; } = true;   // allows the Review page
         public bool ShowScoreOnSubmit { get; set; } = true;   // see score immediately after submit
+
+        public QuizType Type { get; set; } = QuizType.Mcq;
 
     }
 }

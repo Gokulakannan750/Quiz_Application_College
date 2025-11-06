@@ -104,11 +104,13 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         private async Task PopulateQuizzes()
         {
             var list = await _db.Quizzes
+                .Where(q => q.Type == QuizType.Mcq)   // NEW filter
                 .OrderBy(q => q.Title)
                 .Select(q => new { q.Id, q.Title })
                 .ToListAsync();
 
-            ViewBag.QuizOptions = new SelectList(list, "Id", "Title");
+            ViewBag.QuizOptions = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(list, "Id", "Title");
         }
+
     }
 }

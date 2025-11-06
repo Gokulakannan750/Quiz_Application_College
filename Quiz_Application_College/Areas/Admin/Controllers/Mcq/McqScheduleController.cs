@@ -27,7 +27,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 .OrderByDescending(s => s.StartAt)
                 .ToListAsync();
 
-            // IMPORTANT: return the SCHEDULE view with a QuizSchedule model
+            // ✅ Return the SCHEDULE Index view with a List<QuizSchedule>
             return View("~/Areas/Admin/Views/Mcq/Schedule/Index.cshtml", data);
         }
 
@@ -43,6 +43,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 MaxAttempts = 1,
                 Timezone = TimeZoneInfo.Local.Id
             };
+            // ✅ Return the SCHEDULE Create view with ScheduleCreateVm
             return View("~/Areas/Admin/Views/Mcq/Schedule/Create.cshtml", vm);
         }
 
@@ -91,9 +92,11 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             return RedirectToAction(nameof(Index));
         }
 
+        // Helpers
         private async Task PopulateQuizzes()
         {
             var list = await _db.Quizzes
+                .Where(q => q.Type == QuizType.Mcq)   // only MCQ quizzes appear in dropdown
                 .OrderBy(q => q.Title)
                 .Select(q => new { q.Id, q.Title })
                 .ToListAsync();

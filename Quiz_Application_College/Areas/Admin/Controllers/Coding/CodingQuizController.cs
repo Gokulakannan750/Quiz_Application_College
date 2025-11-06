@@ -20,9 +20,8 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            // Only quizzes that have coding questions mapped
             var list = await _db.Quizzes
-                .Where(q => _db.QuizCodingQuestions.Any(cq => cq.QuizId == q.Id))
+                .Where(q => q.Type == QuizType.Coding)
                 .OrderByDescending(q => q.CreatedAt)
                 .ToListAsync();
 
@@ -50,11 +49,12 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(QuizCreateVm vm)
         {
+            // enforce coding-safe flags
             vm.EnableNegativeMarking = false;
             vm.NegativeMarkPerWrong = 0;
             vm.ShuffleQuestions = false;
             vm.ShuffleOptions = false;
-            vm.TotalMarks = 0; // testcases decide later
+            vm.TotalMarks = 0; // computed later from testcases
 
             if (!ModelState.IsValid)
                 return View("~/Areas/Admin/Views/Coding/Quiz/Create.cshtml", vm);
@@ -72,7 +72,10 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                 ShowReviewOnSubmit = vm.ShowReviewOnSubmit,
                 ShowScoreOnSubmit = vm.ShowScoreOnSubmit,
                 IsPublished = false,
-                CreatedAt = DateTimeOffset.Now
+                CreatedAt = DateTimeOffset.Now,
+
+                // NEW: mark as Coding
+                Type = QuizType.Coding
             };
 
             _db.Quizzes.Add(quiz);

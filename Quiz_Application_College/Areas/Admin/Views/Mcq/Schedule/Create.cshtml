@@ -1,62 +1,61 @@
-﻿@model Quiz_Application_College.ViewModels.McqCreateVm
+﻿@model Quiz_Application_College.ViewModels.ScheduleCreateVm
 @{
-    ViewData["Title"] = "Create MCQ Question";
+    ViewData["Title"] = "Create MCQ Schedule";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var quizOptions = ViewBag.QuizOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
 }
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Create MCQ Question</h2>
-        <a class="btn btn-outline-secondary" href="/Admin/MCQ/QuestionBank">Back</a>
+        <h2 class="mb-0">Create MCQ Schedule</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/MCQ/Schedule">Back</a>
     </div>
 
-    <form method="post" action="/Admin/MCQ/QuestionBank/Create">
+    <form method="post" action="/Admin/MCQ/Schedule/Create">
         @Html.AntiForgeryToken()
+
         <div class="card shadow-sm">
             <div class="card-body">
 
                 <div class="mb-3">
-                    <label class="form-label">Question Text</label>
-                    <textarea asp-for="Text" class="form-control" rows="3"></textarea>
-                    <span asp-validation-for="Text" class="text-danger"></span>
+                    <label class="form-label">Quiz</label>
+                    <select asp-for="QuizId" class="form-select" asp-items="quizOptions">
+                        <option value="">-- Select MCQ Quiz --</option>
+                    </select>
+                    <span asp-validation-for="QuizId" class="text-danger"></span>
                 </div>
 
                 <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Marks</label>
-                        <input asp-for="Marks" class="form-control" type="number" step="0.01" />
-                        <span asp-validation-for="Marks" class="text-danger"></span>
+                    <div class="col-md-6">
+                        <label class="form-label">Start At</label>
+                        <input asp-for="StartAt" class="form-control" type="datetime-local" />
+                        <span asp-validation-for="StartAt" class="text-danger"></span>
                     </div>
-                    <div class="col-md-9">
-                        <label class="form-label">Tag (optional)</label>
-                        <input asp-for="Tag" class="form-control" />
-                        <span asp-validation-for="Tag" class="text-danger"></span>
+                    <div class="col-md-6">
+                        <label class="form-label">End At</label>
+                        <input asp-for="EndAt" class="form-control" type="datetime-local" />
+                        <span asp-validation-for="EndAt" class="text-danger"></span>
                     </div>
                 </div>
 
-                <hr />
-                <h6 class="mb-2">Options</h6>
-
-                @for (int i = 0; i < Model.Options.Length; i++)
-                {
-                    <div class="row g-2 align-items-center mb-2">
-                        <div class="col-1 text-end"><strong>@( (char)('A' + i) ).</strong></div>
-                        <div class="col-9">
-                            <input name="Options[@i]" class="form-control" />
-                        </div>
-                        <div class="col-2">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="CorrectIndex" value="@i" />
-                                <label class="form-check-label">Correct</label>
-                            </div>
-                        </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label class="form-label">Max Attempts</label>
+                        <input asp-for="MaxAttempts" class="form-control" type="number" min="1" step="1" />
+                        <span asp-validation-for="MaxAttempts" class="text-danger"></span>
                     </div>
-                }
+                    <div class="col-md-8">
+                        <label class="form-label">Timezone</label>
+                        <input asp-for="Timezone" class="form-control" />
+                        <small class="text-muted">e.g., @TimeZoneInfo.Local.Id</small>
+                        <span asp-validation-for="Timezone" class="text-danger"></span>
+                    </div>
+                </div>
 
             </div>
             <div class="card-footer d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Create</button>
-                <a class="btn btn-outline-secondary" href="/Admin/MCQ/QuestionBank">Cancel</a>
+                <a class="btn btn-outline-secondary" href="/Admin/MCQ/Schedule">Cancel</a>
             </div>
         </div>
     </form>

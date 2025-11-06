@@ -39,17 +39,14 @@
                             {
                                 <tr>
                                     <td>@s.Quiz?.Title</td>
-                                    <td>@s.StartAt.ToLocalTime().ToString("g")</td>
-                                    <td>@s.EndAt.ToLocalTime().ToString("g")</td>
+                                    <td>@s.StartAt</td>
+                                    <td>@s.EndAt</td>
                                     <td>@s.MaxAttempts</td>
                                     <td>@s.Timezone</td>
                                     <td class="text-end">
                                         <form method="post" action="/Admin/MCQ/Schedule/Delete/@s.Id" class="d-inline">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                    onclick="return confirm('Delete this schedule?');">
-                                                Delete
-                                            </button>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this schedule?');">Delete</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -57,7 +54,7 @@
                         }
                         else
                         {
-                            <tr><td colspan="6" class="text-center text-muted">No schedules found.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted">No schedules yet.</td></tr>
                         }
                     </tbody>
                 </table>

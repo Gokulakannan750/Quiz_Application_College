@@ -22,8 +22,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         public async Task<IActionResult> Index()
         {
             var list = await _db.Quizzes
-                // If you want “MCQ-only” list, uncomment next line:
-                // .Where(q => _db.QuizQuestions.Any(qq => qq.QuizId == q.Id))
+                .Where(q => q.Type == QuizType.Mcq)
                 .OrderByDescending(q => q.CreatedAt)
                 .ToListAsync();
 
@@ -56,7 +55,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 ShowReviewOnSubmit = vm.ShowReviewOnSubmit,
                 ShowScoreOnSubmit = vm.ShowScoreOnSubmit,
                 IsPublished = false,
-                CreatedAt = DateTimeOffset.Now
+                CreatedAt = DateTimeOffset.Now,
+
+                Type = QuizType.Mcq
             };
 
             _db.Quizzes.Add(quiz);
