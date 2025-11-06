@@ -26,6 +26,7 @@ namespace Quiz_Application_College.Data
         public DbSet<CodeTestCase> CodeTestCases => Set<CodeTestCase>();
         public DbSet<AttemptCodeItem> AttemptCodeItems => Set<AttemptCodeItem>();
         public DbSet<QuizCodingQuestion> QuizCodingQuestions => Set<QuizCodingQuestion>();
+        public DbSet<Quiz_Application_College.Domain.StudentProfile> StudentProfiles { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder b)
         {

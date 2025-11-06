@@ -1,0 +1,43 @@
+﻿@{
+    ViewData["Title"] = "Import Students DB";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Import Students DB</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/StudentProfiles">Back</a>
+    </div>
+
+    @if (TempData["Ok"] != null)
+    {
+        <div class="alert alert-success">@Html.Raw(TempData["Ok"])</div>
+    }
+    @if (TempData["Err"] != null)
+    {
+        <div class="alert alert-danger">@Html.Raw(TempData["Err"])</div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p class="mb-2"><strong>Rules:</strong></p>
+            <ul>
+                <li><strong>File name</strong> = College name (e.g., <code>ABC_College.xlsx</code> → “ABC_College”)</li>
+                <li><strong>Each sheet</strong> = Department (sheet name)</li>
+                <li><strong>Columns (header row)</strong>: <code>Name</code>, <code>Email</code>, <code>RollNumber</code> (case-insensitive)</li>
+                <li>Students created as Identity users (role <code>Student</code>): Username=<code>RollNumber</code>, Email=<code>Email</code>, default password=<code>Student@12345</code> (change later)</li>
+            </ul>
+
+            <form method="post" enctype="multipart/form-data" action="/Admin/StudentProfiles/Import">
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label class="form-label">Excel File (.xlsx)</label>
+                    <input class="form-control" type="file" name="file" accept=".xlsx" required />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Upload & Import</button>
+                <a class="btn btn-outline-info ms-2" href="/Admin/StudentProfiles/Template">Download CSV Template</a>
+            </form>
+        </div>
+    </div>
+</div>
