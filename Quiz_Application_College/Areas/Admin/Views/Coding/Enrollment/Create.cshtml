@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "New Coding Enrollment";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var quizOptions = ViewBag.QuizOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">New Coding Enrollment</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/Coding/Enrollment">Back</a>
+    </div>
+
+    <form method="post" action="/Admin/Coding/Enrollment/Create">
+        @Html.AntiForgeryToken()
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <div class="mb-3">
+                    <label class="form-label">Coding Quiz</label>
+                    <select name="quizId" class="form-select" asp-items="quizOptions">
+                        <option value="">-- Select Coding Quiz --</option>
+                    </select>
+                    <span class="text-danger">@Html.ValidationMessage("quizId")</span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Student Email</label>
+                    <input name="email" class="form-control" />
+                    <span class="text-danger">@Html.ValidationMessage("email")</span>
+                </div>
+
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a class="btn btn-outline-secondary" href="/Admin/Coding/Enrollment">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
