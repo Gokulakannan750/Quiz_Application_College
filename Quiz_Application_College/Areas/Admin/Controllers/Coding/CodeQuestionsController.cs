@@ -6,7 +6,7 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain.Coding;
 using System.ComponentModel.DataAnnotations;
 
-namespace Quiz_Application_College.Areas.Admin.Controllers
+namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 {
     [Area("Admin")]
     [Authorize(Roles = "Admin")]
@@ -31,7 +31,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 .ToListAsync();
 
             ViewBag.Query = q;
-            return View(list);
+            return View("~/Areas/Admin/Views/Coding/CodeQuestions/Index.cshtml");
         }
 
         // GET: /Admin/CodeQuestions/Create

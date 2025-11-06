@@ -1,0 +1,65 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.Quiz>
+@{
+    ViewData["Title"] = "MCQ Quizzes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">MCQ Quizzes</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary" href="/Admin/MCQ/Quiz/Create">Create Quiz</a>
+            <a class="btn btn-outline-secondary" href="/Admin/MCQ">Back to MCQ Dashboard</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Duration</th>
+                            <th>Total Marks</th>
+                            <th>Published</th>
+                            <th>Created</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var q in Model)
+                            {
+                                <tr>
+                                    <td>@q.Title</td>
+                                    <td>@q.DurationMinutes mins</td>
+                                    <td>@q.TotalMarks</td>
+                                    <td>@(q.IsPublished ? "Yes" : "No")</td>
+                                    <td>@q.CreatedAt.ToLocalTime().ToString("g")</td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="/Admin/MCQ/Quiz/Edit/@q.Id">Edit</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="/Admin/MCQ/Quiz/Assign/@q.Id">Assign</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="/Admin/MCQ/Quiz/Questions/@q.Id">Questions</a>
+
+                                        <form method="post" action="/Admin/MCQ/Quiz/@(q.IsPublished ? "Unpublish" : "Publish")/@q.Id" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm @(q.IsPublished ? "btn-warning" : "btn-success")">
+                                                @(q.IsPublished ? "Unpublish" : "Publish")
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="6" class="text-center text-muted">No quizzes yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

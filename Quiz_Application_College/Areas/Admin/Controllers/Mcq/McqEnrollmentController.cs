@@ -7,22 +7,26 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
 
-namespace Quiz_Application_College.Areas.Admin.Controllers
+namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
     [Authorize(Policy = "IsAdmin")]
-    public class EnrollmentController : Controller
+    // Make the URL nice: /Admin/MCQ/Enrollment/...
+    [Route("Admin/MCQ/Enrollment")]
+    public class McqEnrollmentController : Controller
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
 
-        public EnrollmentController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
+        public McqEnrollmentController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
         {
             _db = db;
             _userManager = userManager;
         }
 
-        // GET: /Admin/Enrollment
+        // GET: /Admin/MCQ/Enrollment  and /Admin/MCQ/Enrollment/Index
+        [HttpGet("")]
+        [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
             var data = await _db.Enrollments
@@ -40,25 +44,26 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             }
             ViewBag.UserEmails = emails;
 
-            return View(data);
+            return View("~/Areas/Admin/Views/Mcq/Enrollment/Index.cshtml", data);
         }
 
-        // GET: /Admin/Enrollment/Create
+        // GET: /Admin/MCQ/Enrollment/Create
+        [HttpGet("Create")]
         public async Task<IActionResult> Create()
         {
             await PopulateQuizzes();
-            return View(new EnrollmentCreateVm());
+            return View("~/Areas/Admin/Views/Mcq/Enrollment/Create.cshtml", new EnrollmentCreateVm());
         }
 
-        // POST: /Admin/Enrollment/Create
-        [HttpPost]
+        // POST: /Admin/MCQ/Enrollment/Create
+        [HttpPost("Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(EnrollmentCreateVm vm)
         {
             if (!ModelState.IsValid)
             {
                 await PopulateQuizzes();
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/Enrollment/Create.cshtml", vm);
             }
 
             var user = await _userManager.FindByEmailAsync(vm.Email);
@@ -66,7 +71,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             {
                 ModelState.AddModelError(nameof(vm.Email), "User not found. Make sure the student has registered.");
                 await PopulateQuizzes();
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/Enrollment/Create.cshtml", vm);
             }
 
             var exists = await _db.Enrollments.AnyAsync(e => e.QuizId == vm.QuizId && e.UserId == user.Id);
@@ -74,7 +79,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             {
                 ModelState.AddModelError("", "This user is already enrolled for the selected quiz.");
                 await PopulateQuizzes();
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/Enrollment/Create.cshtml", vm);
             }
 
             _db.Enrollments.Add(new Enrollment { QuizId = vm.QuizId, UserId = user.Id, Status = "Active" });
@@ -82,8 +87,8 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: /Admin/Enrollment/Delete/{id}
-        [HttpPost]
+        // POST: /Admin/MCQ/Enrollment/Delete/{id}
+        [HttpPost("Delete/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(Guid id)
         {

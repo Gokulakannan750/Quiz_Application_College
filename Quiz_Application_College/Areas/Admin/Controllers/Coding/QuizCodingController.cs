@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain.Coding;
 
-namespace Quiz_Application_College.Areas.Admin.Controllers
+namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 {
     [Area("Admin")]
     [Authorize(Roles = "Admin")]
@@ -52,7 +52,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 Available = available,
                 Attached = attached
             };
-            return View(vm);
+            return View("~/Areas/Admin/Views/Coding/Quiz/Index.cshtml");
         }
 
         // POST: /Admin/QuizCoding/Attach

@@ -1,0 +1,82 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.McqQuestion>
+@{
+    ViewData["Title"] = "MCQ Question Bank";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">MCQ Question Bank</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary" href="/Admin/MCQ/QuestionBank/Create">Create Question</a>
+            <a class="btn btn-outline-secondary" href="/Admin/MCQ/QuestionBank/Import">Import (.xlsx)</a>
+            <a class="btn btn-outline-secondary" href="/Admin/MCQ">Back to MCQ Dashboard</a>
+        </div>
+    </div>
+
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-success">@TempData["Info"]</div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Text</th>
+                            <th>Marks</th>
+                            <th>Tag</th>
+                            <th>Options</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var q in Model)
+                            {
+                                <tr>
+                                    <td>@q.Text</td>
+                                    <td>@q.Marks</td>
+                                    <td>@q.Tag</td>
+                                    <td>
+                                        @if (q.Options != null && q.Options.Any())
+                                        {
+                                            <ul class="mb-0">
+                                                @foreach (var o in q.Options)
+                                                {
+                                                    <li>@o.Text @(o.IsCorrect ? "(✓)" : "")</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="/Admin/MCQ/QuestionBank/Edit/@q.Id">Edit</a>
+                                        <form method="post" action="/Admin/MCQ/QuestionBank/Delete/@q.Id" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Delete this question?');">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="5" class="text-center text-muted">No questions found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

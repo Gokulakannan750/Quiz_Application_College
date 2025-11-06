@@ -6,38 +6,48 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
 
-namespace Quiz_Application_College.Areas.Admin.Controllers
+namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
     [Authorize(Policy = "IsAdmin")]
+    // Routes under /Admin/MCQ/Schedule...
+    [Route("Admin/MCQ/Schedule")]
     public class ScheduleController : Controller
     {
         private readonly ApplicationDbContext _db;
         public ScheduleController(ApplicationDbContext db) => _db = db;
 
-        // GET: /Admin/Schedule
+        // GET: /Admin/MCQ/Schedule  and /Admin/MCQ/Schedule/Index
+        [HttpGet("")]
+        [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
             var data = await _db.QuizSchedules
                 .Include(s => s.Quiz)
                 .OrderByDescending(s => s.StartAt)
                 .ToListAsync();
-            return View(data);
+
+            // IMPORTANT: return the SCHEDULE view with a QuizSchedule model
+            return View("~/Areas/Admin/Views/Mcq/Schedule/Index.cshtml", data);
         }
 
-        // GET: /Admin/Schedule/Create
+        // GET: /Admin/MCQ/Schedule/Create
+        [HttpGet("Create")]
         public async Task<IActionResult> Create()
         {
             await PopulateQuizzes();
-            return View(new ScheduleCreateVm
+            var vm = new ScheduleCreateVm
             {
-                StartAt = DateTimeOffset.UtcNow.AddHours(1),
-                EndAt = DateTimeOffset.UtcNow.AddHours(2)
-            });
+                StartAt = DateTimeOffset.Now.AddHours(1),
+                EndAt = DateTimeOffset.Now.AddHours(2),
+                MaxAttempts = 1,
+                Timezone = TimeZoneInfo.Local.Id
+            };
+            return View("~/Areas/Admin/Views/Mcq/Schedule/Create.cshtml", vm);
         }
 
-        // POST: /Admin/Schedule/Create
-        [HttpPost]
+        // POST: /Admin/MCQ/Schedule/Create
+        [HttpPost("Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ScheduleCreateVm vm)
         {
@@ -47,7 +57,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             if (!ModelState.IsValid)
             {
                 await PopulateQuizzes();
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/Schedule/Create.cshtml", vm);
             }
 
             var s = new QuizSchedule
@@ -58,26 +68,26 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 MaxAttempts = vm.MaxAttempts,
                 Timezone = vm.Timezone
             };
+
             _db.QuizSchedules.Add(s);
             await _db.SaveChangesAsync();
 
+            TempData["Ok"] = "Schedule created.";
             return RedirectToAction(nameof(Index));
         }
 
-        //  POST: /Admin/Schedule/Delete
-        [HttpPost]
+        // POST: /Admin/MCQ/Schedule/Delete/{id}
+        [HttpPost("Delete/{id:guid}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(Guid id, Guid quizId)
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var sched = await _db.QuizSchedules
-                .FirstOrDefaultAsync(s => s.Id == id && s.QuizId == quizId);
+            var sched = await _db.QuizSchedules.FirstOrDefaultAsync(s => s.Id == id);
             if (sched != null)
             {
                 _db.QuizSchedules.Remove(sched);
                 await _db.SaveChangesAsync();
                 TempData["Ok"] = "Schedule deleted.";
             }
-            // ✅ Return to the schedules list page
             return RedirectToAction(nameof(Index));
         }
 

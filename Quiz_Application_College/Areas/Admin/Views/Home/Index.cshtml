@@ -1,57 +1,90 @@
-﻿@using Microsoft.EntityFrameworkCore
-@inject Quiz_Application_College.Data.ApplicationDbContext Db
+﻿@model Quiz_Application_College.ViewModels.AdminDashboardVm
 @{
     ViewData["Title"] = "Admin Dashboard";
-    var totalQuizzes = Db.Quizzes.Count();
-    var openSchedules = Db.QuizSchedules
-        .Count(s => s.StartAt <= DateTimeOffset.UtcNow && s.EndAt >= DateTimeOffset.UtcNow);
-    var totalEnrollments = Db.Enrollments.Count();
+    Layout = "~/Views/Shared/_Layout.cshtml"; // adjust if your admin layout path is different
 }
 
-<div class="container mt-3">
-    <h2>Admin Dashboard</h2>
+<div class="container py-4">
+    <h2 class="mb-4">Admin Dashboard</h2>
 
-    <div class="row g-3 mt-1">
-        <div class="col-md-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">Total Quizzes</div>
-                    <h3 class="my-2">@totalQuizzes</h3>
-                    <a asp-area="Admin" asp-controller="Quiz" asp-action="Index" class="stretched-link">Open quiz list →</a>
+    <!-- Tiles: DO NOT mix href with asp-* tag helpers. Use ONLY href here. -->
+    <div class="row g-3 mb-4">
+        <!-- MCQ Dashboard -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/MCQ">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">MCQ Dashboard</h5>
+                        <p class="card-text text-muted">Manage MCQ quizzes, schedules, enrolments & questions.</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">Open Schedules (Now)</div>
-                    <h3 class="my-2">@openSchedules</h3>
-                    <a asp-area="Admin" asp-controller="Schedule" asp-action="Index" class="stretched-link">View schedules →</a>
+        <!-- Coding Dashboard -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/Coding">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">Coding Dashboard</h5>
+                        <p class="card-text text-muted">Manage coding quizzes, problems, schedules & enrolments.</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">Total Enrollments</div>
-                    <h3 class="my-2">@totalEnrollments</h3>
-                    <a asp-area="Admin" asp-controller="Enrollment" asp-action="Index" class="stretched-link">Manage enrollments →</a>
+        <!-- Reports -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/Reports/Index">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">Reports</h5>
+                        <p class="card-text text-muted">Exports & analytics.</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <div class="col-md-3">
+        <!-- More (placeholder) -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="#">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">More</h5>
+                        <p class="card-text text-muted">Settings & advanced features (coming soon).</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats (read from @Model; never query Db in a view) -->
+    <div class="row g-3">
+        <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="text-muted">Reports</div>
-                    <h3 class="my-2">Manage</h3>
-                    <a asp-area="Admin" asp-controller="Reports" asp-action="Index" class="stretched-link">
-                        Create/Edit reports →
-                    </a>
+                    <h5 class="card-title mb-3">Today & Totals</h5>
+                    <div class="row text-center">
+                        <div class="col-6 col-md-3">
+                            <div class="h2">@Model?.TotalQuizzes ?? 0</div>
+                            <div class="text-muted">Total Quizzes</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="h2">@Model?.OpenSchedulesNow ?? 0</div>
+                            <div class="text-muted">Open Schedules Now</div>
+                        </div>
+                        <div class="col-6 col-md-3 mt-3 mt-md-0">
+                            <div class="h2">@Model?.TotalEnrollments ?? 0</div>
+                            <div class="text-muted">Total Enrolments</div>
+                        </div>
+                        <div class="col-6 col-md-3 mt-3 mt-md-0">
+                            <div class="h2">@Model?.AttemptsToday ?? 0</div>
+                            <div class="text-muted">Attempts Today</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+
+   </div>

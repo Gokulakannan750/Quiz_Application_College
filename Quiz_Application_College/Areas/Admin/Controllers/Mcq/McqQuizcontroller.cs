@@ -5,36 +5,45 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
 
-namespace Quiz_Application_College.Areas.Admin.Controllers
+namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
     [Authorize(Policy = "IsAdmin")]
+    // Everything under /Admin/MCQ/Quiz/...
+    [Route("Admin/MCQ/Quiz")]
     public class QuizController : Controller
     {
         private readonly ApplicationDbContext _db;
-
         public QuizController(ApplicationDbContext db) => _db = db;
 
-        // GET: /Admin/Quiz
+        // GET: /Admin/MCQ/Quiz  and /Admin/MCQ/Quiz/Index
+        [HttpGet("")]
+        [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
             var list = await _db.Quizzes
+                // If you want “MCQ-only” list, uncomment next line:
+                // .Where(q => _db.QuizQuestions.Any(qq => qq.QuizId == q.Id))
                 .OrderByDescending(q => q.CreatedAt)
                 .ToListAsync();
-            return View(list);
+
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Index.cshtml", list);
         }
 
-        // GET: /Admin/Quiz/Create
-        public IActionResult Create() => View(new QuizCreateVm());
+        // GET: /Admin/MCQ/Quiz/Create
+        [HttpGet("Create")]
+        public IActionResult Create()
+            => View("~/Areas/Admin/Views/Mcq/Quiz/Create.cshtml", new QuizCreateVm());
 
-        // POST: /Admin/Quiz/Create
-        [HttpPost]
+        // POST: /Admin/MCQ/Quiz/Create
+        [HttpPost("Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(QuizCreateVm vm)
         {
-            if (!ModelState.IsValid) return View(vm);
+            if (!ModelState.IsValid)
+                return View("~/Areas/Admin/Views/Mcq/Quiz/Create.cshtml", vm);
 
-            var quiz = new Quiz_Application_College.Domain.Quiz
+            var quiz = new Quiz
             {
                 Title = vm.Title,
                 Description = vm.Description,
@@ -42,24 +51,83 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 TotalMarks = vm.TotalMarks,
                 EnableNegativeMarking = vm.EnableNegativeMarking,
                 NegativeMarkPerWrong = vm.NegativeMarkPerWrong,
-
-                // NEW toggles
                 ShuffleQuestions = vm.ShuffleQuestions,
                 ShuffleOptions = vm.ShuffleOptions,
                 ShowReviewOnSubmit = vm.ShowReviewOnSubmit,
                 ShowScoreOnSubmit = vm.ShowScoreOnSubmit,
-
-                IsPublished = false, // or your default
+                IsPublished = false,
                 CreatedAt = DateTimeOffset.Now
             };
+
             _db.Quizzes.Add(quiz);
             await _db.SaveChangesAsync();
-
-
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Admin/Quiz/Assign/{id}
+        // GET: /Admin/MCQ/Quiz/Edit/{id}
+        [HttpGet("Edit/{id:guid}")]
+        public async Task<IActionResult> Edit(Guid id)
+        {
+            var quiz = await _db.Quizzes.FindAsync(id);
+            if (quiz == null) return NotFound();
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Edit.cshtml", quiz);
+        }
+
+        // POST: /Admin/MCQ/Quiz/Edit/{id}
+        [HttpPost("Edit/{id:guid}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Guid id, Quiz form)
+        {
+            if (id != form.Id) return BadRequest();
+            if (!ModelState.IsValid) return View("~/Areas/Admin/Views/Mcq/Quiz/Edit.cshtml", form);
+
+            var quiz = await _db.Quizzes.FindAsync(id);
+            if (quiz == null) return NotFound();
+
+            quiz.Title = form.Title;
+            quiz.Description = form.Description;
+            quiz.DurationMinutes = form.DurationMinutes;
+            quiz.TotalMarks = form.TotalMarks;
+            quiz.EnableNegativeMarking = form.EnableNegativeMarking;
+            quiz.NegativeMarkPerWrong = form.NegativeMarkPerWrong;
+            quiz.ShuffleQuestions = form.ShuffleQuestions;
+            quiz.ShuffleOptions = form.ShuffleOptions;
+            quiz.ShowReviewOnSubmit = form.ShowReviewOnSubmit;
+            quiz.ShowScoreOnSubmit = form.ShowScoreOnSubmit;
+            quiz.UpdatedAt = DateTimeOffset.Now;
+
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Admin/MCQ/Quiz/Publish/{id}
+        [HttpPost("Publish/{id:guid}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Publish(Guid id)
+        {
+            var quiz = await _db.Quizzes.FindAsync(id);
+            if (quiz == null) return NotFound();
+            quiz.IsPublished = true;
+            quiz.UpdatedAt = DateTimeOffset.Now;
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Admin/MCQ/Quiz/Unpublish/{id}
+        [HttpPost("Unpublish/{id:guid}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Unpublish(Guid id)
+        {
+            var quiz = await _db.Quizzes.FindAsync(id);
+            if (quiz == null) return NotFound();
+            quiz.IsPublished = false;
+            quiz.UpdatedAt = DateTimeOffset.Now;
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        // GET: /Admin/MCQ/Quiz/Assign/{id}
+        [HttpGet("Assign/{id:guid}")]
         public async Task<IActionResult> Assign(Guid id)
         {
             var quiz = await _db.Quizzes.FindAsync(id);
@@ -78,10 +146,12 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             ViewBag.Quiz = quiz;
             ViewBag.AllQuestions = qlist;
             ViewBag.Selected = selected;
-            return View();
+
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Assign.cshtml");
         }
 
-        [HttpPost]
+        // POST: /Admin/MCQ/Quiz/Assign/{id}
+        [HttpPost("Assign/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Assign(Guid id, Guid[] questionIds)
         {
@@ -92,90 +162,27 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             _db.QuizQuestions.RemoveRange(existing);
 
             int order = 1;
-            foreach (var qid in questionIds.Distinct())
+            foreach (var qid in (questionIds ?? Array.Empty<Guid>()).Distinct())
                 _db.QuizQuestions.Add(new QuizQuestion { QuizId = id, QuestionId = qid, Order = order++ });
 
             await _db.SaveChangesAsync();
+            TempData["Info"] = "Questions assigned.";
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Publish(Guid id)
-        {
-            var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
-            quiz.IsPublished = true;
-            quiz.UpdatedAt = DateTimeOffset.Now;
-            await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Unpublish(Guid id)
-        {
-            var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
-            quiz.IsPublished = false;
-            quiz.UpdatedAt = DateTimeOffset.Now;
-            await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        public async Task<IActionResult> Edit(Guid id)
-        {
-            var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
-            return View(quiz);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, Quiz_Application_College.Domain.Quiz quiz)
-        {
-            if (id != quiz.Id) return BadRequest();
-            if (!ModelState.IsValid) return View(quiz);
-
-            var dbq = await _db.Quizzes.FindAsync(id);
-            if (dbq == null) return NotFound();
-
-            // update fields you allow editing
-            dbq.Title = quiz.Title;
-            dbq.Description = quiz.Description;
-            dbq.DurationMinutes = quiz.DurationMinutes;
-            dbq.TotalMarks = quiz.TotalMarks;
-            dbq.EnableNegativeMarking = quiz.EnableNegativeMarking;
-            dbq.NegativeMarkPerWrong = quiz.NegativeMarkPerWrong;
-
-            // new toggles
-            dbq.ShuffleQuestions = quiz.ShuffleQuestions;
-            dbq.ShuffleOptions = quiz.ShuffleOptions;
-            dbq.ShowReviewOnSubmit = quiz.ShowReviewOnSubmit;
-            dbq.ShowScoreOnSubmit = quiz.ShowScoreOnSubmit;
-
-            dbq.UpdatedAt = DateTimeOffset.Now;
-
-            await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        // GET: /Admin/Quiz/Questions/{id}
-        [HttpGet]
+        // GET: /Admin/MCQ/Quiz/Questions/{id}
+        [HttpGet("Questions/{id:guid}")]
         public async Task<IActionResult> Questions(Guid id)
         {
             var quiz = await _db.Quizzes.FirstOrDefaultAsync(q => q.Id == id);
             if (quiz == null) return NotFound();
 
-            // Current links (questionId -> order)
             var current = await _db.QuizQuestions
                 .Where(qq => qq.QuizId == id)
                 .Select(qq => new { qq.QuestionId, qq.Order })
                 .ToListAsync();
-            var currentMap = current.ToDictionary(x => x.QuestionId, x => (int?)x.Order);
+            var map = current.ToDictionary(x => x.QuestionId, x => (int?)x.Order);
 
-            // IMPORTANT: pull only from McqQuestions (NO join to options).
-            // This guarantees one row per question.
             var list = await _db.McqQuestions
                 .AsNoTracking()
                 .OrderBy(q => q.Text)
@@ -183,59 +190,42 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 {
                     QuestionId = q.Id,
                     Text = q.Text,
-                    Selected = currentMap.ContainsKey(q.Id),
-                    Order = currentMap.ContainsKey(q.Id) ? currentMap[q.Id] : null
+                    Selected = map.ContainsKey(q.Id),
+                    Order = map.ContainsKey(q.Id) ? map[q.Id] : null
                 })
                 .ToListAsync();
 
             ViewBag.QuizId = id;
             ViewBag.QuizTitle = quiz.Title;
-            return View(list);
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Questions.cshtml", list);
         }
 
-        // POST: /Admin/Quiz/Questions/{id}
-        [HttpPost]
+        // POST: /Admin/MCQ/Quiz/Questions/{id}
+        [HttpPost("Questions/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Questions(Guid id, Guid[] selectedIds)
         {
             var quiz = await _db.Quizzes.FirstOrDefaultAsync(q => q.Id == id);
             if (quiz == null) return NotFound();
 
-            // Normalize the incoming set (distinct)
-            var selected = selectedIds?.Distinct().ToHashSet() ?? new HashSet<Guid>();
+            var selected = (selectedIds ?? Array.Empty<Guid>()).Distinct().ToHashSet();
 
-            // Existing links for this quiz
-            var existing = await _db.QuizQuestions
-                .Where(qq => qq.QuizId == id)
-                .ToListAsync();
-
+            var existing = await _db.QuizQuestions.Where(qq => qq.QuizId == id).ToListAsync();
             var existingIds = existing.Select(e => e.QuestionId).ToHashSet();
 
-            // Add new links
             var toAdd = selected.Except(existingIds).ToList();
             if (toAdd.Count > 0)
             {
-                // Determine next order index
                 var nextOrder = existing.Count == 0 ? 1 : existing.Max(e => e.Order) + 1;
                 foreach (var qid in toAdd)
-                {
-                    _db.QuizQuestions.Add(new Domain.QuizQuestion
-                    {
-                        QuizId = id,
-                        QuestionId = qid,
-                        Order = nextOrder++
-                    });
-                }
+                    _db.QuizQuestions.Add(new QuizQuestion { QuizId = id, QuestionId = qid, Order = nextOrder++ });
             }
 
-            // Remove unselected links
             var toRemove = existing.Where(e => !selected.Contains(e.QuestionId)).ToList();
-            if (toRemove.Count > 0)
-                _db.QuizQuestions.RemoveRange(toRemove);
+            if (toRemove.Count > 0) _db.QuizQuestions.RemoveRange(toRemove);
 
             await _db.SaveChangesAsync();
-
-            TempData["Info"] = "Questions updated.";
+            TempData["Info"] = "Question list updated.";
             return RedirectToAction(nameof(Questions), new { id });
         }
     }

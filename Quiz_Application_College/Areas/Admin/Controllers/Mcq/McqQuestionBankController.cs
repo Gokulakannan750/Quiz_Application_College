@@ -7,41 +7,61 @@ using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
 
-namespace Quiz_Application_College.Areas.Admin.Controllers
+namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
     [Authorize(Policy = "IsAdmin")]
-    public class QuestionBankController : Controller
+    // Clean, fixed path => /Admin/MCQ/QuestionBank/...
+    [Route("Admin/MCQ/QuestionBank")]
+    public class McqQuestionBankController : Controller
     {
         private readonly ApplicationDbContext _db;
-        public QuestionBankController(ApplicationDbContext db) => _db = db;
+        public McqQuestionBankController(ApplicationDbContext db) => _db = db;
 
+        // GET: /Admin/MCQ/QuestionBank  and /Admin/MCQ/QuestionBank/Index
+        [HttpGet("")]
+        [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
             var list = await _db.McqQuestions
                 .Include(q => q.Options)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Id) // <- FIX: your entity has no CreatedAt
                 .ToListAsync();
-            return View(list);
+
+            return View("~/Areas/Admin/Views/Mcq/QuestionBank/Index.cshtml", list);
         }
 
-        public IActionResult Create() => View(new McqCreateVm());
+        // GET: /Admin/MCQ/QuestionBank/Create
+        [HttpGet("Create")]
+        public IActionResult Create()
+        {
+            return View("~/Areas/Admin/Views/Mcq/QuestionBank/Create.cshtml", new McqCreateVm());
+        }
 
-        [HttpPost]
+        // POST: /Admin/MCQ/QuestionBank/Create
+        [HttpPost("Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(McqCreateVm vm)
         {
-            if (!ModelState.IsValid) return View(vm);
+            if (!ModelState.IsValid)
+                return View("~/Areas/Admin/Views/Mcq/QuestionBank/Create.cshtml", vm);
 
-            if (vm.Options.Count(o => !string.IsNullOrWhiteSpace(o)) < 2)
+            if (vm.Options == null || vm.Options.Count(o => !string.IsNullOrWhiteSpace(o)) < 2)
                 ModelState.AddModelError("", "Provide at least two options.");
 
-            if (vm.CorrectIndex is null || vm.CorrectIndex < 0 || vm.CorrectIndex > 3)
+            if (vm.CorrectIndex is null || vm.CorrectIndex < 0 || vm.CorrectIndex > vm.Options.Length - 1)
                 ModelState.AddModelError(nameof(vm.CorrectIndex), "Select the correct option.");
 
-            if (!ModelState.IsValid) return View(vm);
+            if (!ModelState.IsValid)
+                return View("~/Areas/Admin/Views/Mcq/QuestionBank/Create.cshtml", vm);
 
-            var q = new McqQuestion { Text = vm.Text.Trim(), Marks = vm.Marks, Tag = vm.Tag?.Trim() };
+            var q = new McqQuestion
+            {
+                Text = vm.Text.Trim(),
+                Marks = vm.Marks,
+                Tag = string.IsNullOrWhiteSpace(vm.Tag) ? null : vm.Tag.Trim(),
+                NormalizedText = BuildNormalized(vm.Text)
+            };
 
             for (int i = 0; i < vm.Options.Length; i++)
             {
@@ -51,7 +71,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 q.Options.Add(new McqOption
                 {
                     Text = text,
-                    IsCorrect = (vm.CorrectIndex == i)
+                    IsCorrect = vm.CorrectIndex == i
                 });
             }
 
@@ -60,7 +80,8 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Admin/QuestionBank/Edit/{id}
+        // GET: /Admin/MCQ/QuestionBank/Edit/{id}
+        [HttpGet("Edit/{id:guid}")]
         public async Task<IActionResult> Edit(Guid id)
         {
             var q = await _db.McqQuestions
@@ -74,7 +95,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 Text = q.Text,
                 Marks = q.Marks,
                 Options = q.Options
-                    .OrderBy(o => o.Id) // simple stable order
+                    .OrderBy(o => o.Id)
                     .Select(o => new McqEditVm.OptionVm
                     {
                         Id = o.Id,
@@ -83,22 +104,21 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                     }).ToList()
             };
 
-            return View(vm);
+            return View("~/Areas/Admin/Views/Mcq/QuestionBank/Edit.cshtml", vm);
         }
 
-        // POST: /Admin/QuestionBank/Edit/{id}
-        [HttpPost]
+        // POST: /Admin/MCQ/QuestionBank/Edit/{id}
+        [HttpPost("Edit/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Guid id, McqEditVm vm)
         {
             if (id != vm.Id) return BadRequest();
-            if (!ModelState.IsValid) return View(vm);
+            if (!ModelState.IsValid) return View("~/Areas/Admin/Views/Mcq/QuestionBank/Edit.cshtml", vm);
 
-            // Ensure exactly one correct option
-            if (vm.Options.Count(o => o.IsCorrect) != 1)
+            if (vm.Options == null || vm.Options.Count(o => o.IsCorrect) != 1)
             {
                 ModelState.AddModelError("", "Please mark exactly one option as correct.");
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/QuestionBank/Edit.cshtml", vm);
             }
 
             var q = await _db.McqQuestions
@@ -106,28 +126,23 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (q == null) return NotFound();
 
-            // Update question
             q.Text = vm.Text;
             q.Marks = vm.Marks;
+            q.NormalizedText = BuildNormalized(vm.Text);
 
-            // Sync options: update existing, add new, remove deleted
             var existing = q.Options.ToDictionary(o => o.Id, o => o);
-
-            // mark all existing as unseen
             var seen = new HashSet<Guid>();
 
             foreach (var optVm in vm.Options)
             {
                 if (optVm.Id.HasValue && existing.TryGetValue(optVm.Id.Value, out var opt))
                 {
-                    // update existing
                     opt.Text = optVm.Text;
                     opt.IsCorrect = optVm.IsCorrect;
                     seen.Add(opt.Id);
                 }
                 else
                 {
-                    // add new
                     var newOpt = new McqOption
                     {
                         QuestionId = q.Id,
@@ -138,20 +153,17 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 }
             }
 
-            // delete removed options
             var toRemove = q.Options.Where(o => !seen.Contains(o.Id)).ToList();
             if (toRemove.Any())
                 _db.McqOptions.RemoveRange(toRemove);
 
-            q.NormalizedText = BuildNormalized(q.Text);
-
             await _db.SaveChangesAsync();
             TempData["Info"] = "Question updated.";
-            return RedirectToAction(nameof(Index)); // back to question list
+            return RedirectToAction(nameof(Index));
         }
 
-        // POST: /Admin/QuestionBank/Delete/{id}
-        [HttpPost]
+        // POST: /Admin/MCQ/QuestionBank/Delete/{id}
+        [HttpPost("Delete/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(Guid id)
         {
@@ -160,11 +172,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (q == null) return NotFound();
 
-            // remove mappings to quizzes first (avoid FK errors)
             var links = await _db.QuizQuestions.Where(qq => qq.QuestionId == id).ToListAsync();
             _db.QuizQuestions.RemoveRange(links);
 
-            // remove options then question
             _db.McqOptions.RemoveRange(q.Options);
             _db.McqQuestions.Remove(q);
 
@@ -173,8 +183,8 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Admin/QuestionBank/Import
-        [HttpGet]
+        // GET: /Admin/MCQ/QuestionBank/Import
+        [HttpGet("Import")]
         public async Task<IActionResult> Import()
         {
             var vm = new QuestionImportVm
@@ -184,15 +194,14 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                     .Select(q => new SelectListItem { Value = q.Id.ToString(), Text = q.Title })
                     .ToListAsync()
             };
-            return View(vm);
+            return View("~/Areas/Admin/Views/Mcq/QuestionBank/Import.cshtml", vm);
         }
 
-        // POST: /Admin/QuestionBank/Import
-        [HttpPost]
+        // POST: /Admin/MCQ/QuestionBank/Import
+        [HttpPost("Import")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Import(QuestionImportVm vm, IFormFile file)
         {
-            // re-populate quizzes for redisplay on error/success
             vm.Quizzes = await _db.Quizzes
                 .OrderBy(q => q.Title)
                 .Select(q => new SelectListItem { Value = q.Id.ToString(), Text = q.Title })
@@ -201,37 +210,35 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             if (file == null || file.Length == 0)
             {
                 vm.Errors.Add("Please choose an .xlsx file.");
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/QuestionBank/Import.cshtml", vm);
             }
             if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
             {
                 vm.Errors.Add("Only .xlsx files are supported.");
-                return View(vm);
+                return View("~/Areas/Admin/Views/Mcq/QuestionBank/Import.cshtml", vm);
             }
 
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms);
             ms.Position = 0;
 
-            using var wb = new XLWorkbook(ms);
+            using var wb = new ClosedXML.Excel.XLWorkbook(ms);
             var ws = wb.Worksheets.First();
 
-            int row = 2; // header at row 1
+            int row = 2; // assume headers at row 1
             int nextOrderCounter = 0;
 
-            // If we are assigning to a quiz, pre-compute the next order
             if (vm.AssignToQuiz && vm.QuizId.HasValue)
             {
                 nextOrderCounter = await _db.QuizQuestions
                     .Where(qq => qq.QuizId == vm.QuizId.Value)
-                    .Select(qq => (int?)qq.Order)
-                    .MaxAsync() ?? 0;
+                    .Select(qq => (int?)qq.Order).MaxAsync() ?? 0;
             }
 
             while (true)
             {
                 var text = ws.Cell(row, 1).GetString().Trim();
-                if (string.IsNullOrWhiteSpace(text)) break; // stop on first blank row
+                if (string.IsNullOrWhiteSpace(text)) break;
 
                 vm.TotalRows++;
 
@@ -273,92 +280,62 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                     vm.Skipped++; row++; continue;
                 }
 
-                // --- DEDUPE: normalize and check existing ---
                 var norm = BuildNormalized(text);
 
-                // Try find existing by normalized text
-                var existingQ = await _db.McqQuestions
-                    .FirstOrDefaultAsync(x => x.NormalizedText == norm);
+                var dup = await _db.McqQuestions.FirstOrDefaultAsync(x => x.NormalizedText == norm);
+                McqQuestion qEntity;
 
-                if (existingQ != null)
+                if (dup != null)
                 {
-                    // Already in DB -> skip creating another
                     vm.Skipped++;
                     vm.Errors.Add($"Row {row}: Duplicate skipped (already exists).");
-
-                    // If admin selected "Assign to quiz", link the existing question
-                    if (vm.AssignToQuiz && vm.QuizId.HasValue)
+                    qEntity = dup;
+                }
+                else
+                {
+                    qEntity = new McqQuestion
                     {
-                        bool linked = await _db.QuizQuestions
-                            .AnyAsync(qq => qq.QuizId == vm.QuizId.Value && qq.QuestionId == existingQ.Id);
+                        Text = text,
+                        Marks = marks,
+                        Tag = string.IsNullOrWhiteSpace(tag) ? null : tag,
+                        NormalizedText = norm
+                    };
+                    _db.McqQuestions.Add(qEntity);
+                    await _db.SaveChangesAsync();
 
-                        if (!linked)
+                    foreach (var (txt, isCorrect) in options)
+                    {
+                        if (string.IsNullOrWhiteSpace(txt)) continue;
+                        _db.McqOptions.Add(new McqOption
                         {
-                            // append to end
-                            var nextOrder = await _db.QuizQuestions
-                                .Where(qq => qq.QuizId == vm.QuizId.Value)
-                                .Select(qq => (int?)qq.Order).MaxAsync() ?? 0;
-
-                            _db.QuizQuestions.Add(new Domain.QuizQuestion
-                            {
-                                QuizId = vm.QuizId.Value,
-                                QuestionId = existingQ.Id,
-                                Order = nextOrder + 1
-                            });
-                            await _db.SaveChangesAsync();
-                        }
+                            QuestionId = qEntity.Id,
+                            Text = txt,
+                            IsCorrect = isCorrect
+                        });
                     }
+                    await _db.SaveChangesAsync();
 
-                    row++;
-                    continue; // go next row
+                    vm.Inserted++;
                 }
 
-                // Not found -> create new
-                var q = new McqQuestion
-                {
-                    Text = text,
-                    Marks = marks,
-                    Tag = string.IsNullOrWhiteSpace(tag) ? null : tag,
-                    NormalizedText = norm // <<< store normalized text
-                };
-                _db.McqQuestions.Add(q);
-                await _db.SaveChangesAsync(); // need q.Id
-
-
-                // Create options (skip blanks)
-                foreach (var (txt, isCorrect) in options)
-                {
-                    if (string.IsNullOrWhiteSpace(txt)) continue;
-                    _db.McqOptions.Add(new McqOption
-                    {
-                        QuestionId = q.Id,
-                        Text = txt,
-                        IsCorrect = isCorrect
-                    });
-                }
-                await _db.SaveChangesAsync();
-
-                // If admin selected "Assign to quiz", link the existing question
                 if (vm.AssignToQuiz && vm.QuizId.HasValue)
                 {
                     bool linked = await _db.QuizQuestions
-                        .AnyAsync(qq => qq.QuizId == vm.QuizId.Value && qq.QuestionId == existingQ.Id);
+                        .AnyAsync(qq => qq.QuizId == vm.QuizId.Value && qq.QuestionId == qEntity.Id);
 
                     if (!linked)
                     {
-                        nextOrderCounter++; // ✅ increment shared counter
-                        _db.QuizQuestions.Add(new Domain.QuizQuestion
+                        nextOrderCounter++;
+                        _db.QuizQuestions.Add(new QuizQuestion
                         {
                             QuizId = vm.QuizId.Value,
-                            QuestionId = existingQ.Id,
+                            QuestionId = qEntity.Id,
                             Order = nextOrderCounter
                         });
                         await _db.SaveChangesAsync();
                     }
                 }
 
-
-                vm.Inserted++;
                 row++;
             }
 
@@ -366,17 +343,15 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             if (vm.TotalRows == 0 && vm.Errors.Count == 0)
                 vm.Errors.Add("No data rows found. Keep headers in row 1 and start data at row 2.");
 
-            return View(vm);
+            return View("~/Areas/Admin/Views/Mcq/QuestionBank/Import.cshtml", vm);
         }
-    
 
-        // GET: /Admin/QuestionBank/Template
-        [HttpGet]
+        // GET: /Admin/MCQ/QuestionBank/Template
+        [HttpGet("Template")]
         public IActionResult Template()
         {
-            using var wb = new XLWorkbook();
+            using var wb = new ClosedXML.Excel.XLWorkbook();
             var ws = wb.AddWorksheet("Questions");
-            // Header
             ws.Cell(1, 1).Value = "Text";
             ws.Cell(1, 2).Value = "Marks";
             ws.Cell(1, 3).Value = "OptionA";
@@ -386,7 +361,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             ws.Cell(1, 7).Value = "Correct (A-D)";
             ws.Cell(1, 8).Value = "Tag";
 
-            // Example row
             ws.Cell(2, 1).Value = "What is the capital of France?";
             ws.Cell(2, 2).Value = 1;
             ws.Cell(2, 3).Value = "Paris";
@@ -400,8 +374,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
 
             using var ms = new MemoryStream();
             wb.SaveAs(ms);
-            var bytes = ms.ToArray();
-            return File(bytes,
+            return File(ms.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "QuestionImportTemplate.xlsx");
         }
@@ -409,20 +382,10 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
         private static string BuildNormalized(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-            // Lowercase
-            var s = input.ToLowerInvariant();
-
-            // Replace CR/LF/Tabs with spaces
-            s = s.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
-
-            // Collapse multiple spaces
+            var s = input.ToLowerInvariant()
+                .Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
             while (s.Contains("  ")) s = s.Replace("  ", " ");
-
-            // Trim
             return s.Trim();
         }
-
     }
-
 }
-    

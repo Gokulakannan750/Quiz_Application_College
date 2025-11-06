@@ -1,0 +1,52 @@
+﻿@{
+    ViewData["Title"] = "Coding Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Coding Dashboard</h2>
+        <a class="btn btn-outline-secondary" href="/Admin">Back to Main</a>
+    </div>
+    <div class="row g-3">
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/Coding/Quiz/Index">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Quizzes</h5>
+                        <p class="card-text text-muted">Create coding quizzes.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/Coding/CodeQuestions/Index">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Problem Bank</h5>
+                        <p class="card-text text-muted">Create coding problems & test cases.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/Coding/Schedule/Index">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Schedules</h5>
+                        <p class="card-text text-muted">Time windows for coding quizzes.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+            <a class="text-decoration-none" href="/Admin/Coding/Enrollment/Index">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Enrolments</h5>
+                        <p class="card-text text-muted">Enroll students to coding quizzes.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
