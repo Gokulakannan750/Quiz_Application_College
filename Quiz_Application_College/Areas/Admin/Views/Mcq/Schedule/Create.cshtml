@@ -1,0 +1,66 @@
+﻿@model Quiz_Application_College.ViewModels.ScheduleCreateVm
+@{
+    ViewData["Title"] = "Create MCQ Schedule";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var quizOptions = ViewBag.QuizOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Create MCQ Schedule</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/MCQ/Schedule">Back</a>
+    </div>
+
+    <form method="post" action="/Admin/MCQ/Schedule/Create">
+        @Html.AntiForgeryToken()
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <div class="mb-3">
+                    <label class="form-label">Quiz</label>
+                    <select asp-for="QuizId" class="form-select" asp-items="quizOptions">
+                        <option value="">-- Select MCQ Quiz --</option>
+                    </select>
+                    <span asp-validation-for="QuizId" class="text-danger"></span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Start At</label>
+                        <input asp-for="StartAt" class="form-control" type="datetime-local" />
+                        <span asp-validation-for="StartAt" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">End At</label>
+                        <input asp-for="EndAt" class="form-control" type="datetime-local" />
+                        <span asp-validation-for="EndAt" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label class="form-label">Max Attempts</label>
+                        <input asp-for="MaxAttempts" class="form-control" type="number" min="1" step="1" />
+                        <span asp-validation-for="MaxAttempts" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Timezone</label>
+                        <input asp-for="Timezone" class="form-control" />
+                        <small class="text-muted">e.g., @TimeZoneInfo.Local.Id</small>
+                        <span asp-validation-for="Timezone" class="text-danger"></span>
+                    </div>
+                </div>
+
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a class="btn btn-outline-secondary" href="/Admin/MCQ/Schedule">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,64 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.QuizSchedule>
+@{
+    ViewData["Title"] = "MCQ Schedules";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">MCQ Schedules</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary" href="/Admin/MCQ/Schedule/Create">Create Schedule</a>
+            <a class="btn btn-outline-secondary" href="/Admin/MCQ">Back to MCQ Dashboard</a>
+        </div>
+    </div>
+
+    @if (TempData["Ok"] != null)
+    {
+        <div class="alert alert-success">@TempData["Ok"]</div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Quiz</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Max Attempts</th>
+                            <th>Timezone</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var s in Model)
+                            {
+                                <tr>
+                                    <td>@s.Quiz?.Title</td>
+                                    <td>@s.StartAt</td>
+                                    <td>@s.EndAt</td>
+                                    <td>@s.MaxAttempts</td>
+                                    <td>@s.Timezone</td>
+                                    <td class="text-end">
+                                        <form method="post" action="/Admin/MCQ/Schedule/Delete/@s.Id" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this schedule?');">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="6" class="text-center text-muted">No schedules yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
