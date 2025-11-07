@@ -17,21 +17,23 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.Configure<FormOptions>(o =>
 {
-    o.MultipartBodyLengthLimit = 1024L * 1024L * 100L; // 100 MB
+    o.MultipartBodyLengthLimit = 1024L * 1024L * 100L; // 100 MB uploads
 });
 
 // Code Runner (Judge0 + fallback)
-builder.Services.AddHttpClient<Quiz_Application_College.Services.Coding.Judge0CodeRunner>();
-builder.Services.AddScoped<Quiz_Application_College.Services.Coding.ICodeRunner>(sp =>
+builder.Services.AddHttpClient<Judge0CodeRunner>();
+builder.Services.AddScoped<ICodeRunner>(sp =>
 {
-    var judge = sp.GetRequiredService<Quiz_Application_College.Services.Coding.Judge0CodeRunner>();
-    return judge.IsEnabled ? judge : new Quiz_Application_College.Services.Coding.NoopCodeRunner();
+    var judge = sp.GetRequiredService<Judge0CodeRunner>();
+    return judge.IsEnabled ? judge : new NoopCodeRunner();
 });
 
+// --- Identity Cookie Settings ---
+// Keep Admin using your combined login (/Account/Login). Students will use /Student/Account/Login via links.
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.LoginPath = "/Identity/Account/Login";
-    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/Login";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
@@ -42,38 +44,49 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("IsAdmin", p => p.RequireRole("Admin", "Faculty", "Examiner", "Moderator"));
 });
 
+// Add a separate cookie just for Students
+builder.Services.AddAuthentication()
+    .AddCookie("StudentCookie", options =>
+    {
+        options.LoginPath = "/Student/Account/Login";
+        options.AccessDeniedPath = "/Student/Account/Login";
+        options.Cookie.Name = "Student.Auth";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    });
+
 // --- Identity (register ONCE; includes Roles) ---
-// NOTE: If you later add a custom ApplicationUser class, replace IdentityUser with your type.
+// IMPORTANT: Relax password requirements so roll numbers (e.g., 21ECE0012) are valid passwords.
 builder.Services
     .AddDefaultIdentity<IdentityUser>(options =>
     {
-        // while developing, you can relax this; set to true when you wire email
         options.SignIn.RequireConfirmedAccount = false;
+
+        // Allow roll numbers as passwords
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequiredUniqueChars = 1;
+        options.Password.RequiredLength = 4; // set higher if your rolls are longer (e.g., 6 or 8)
     })
-    .AddRoles<IdentityRole>() // REQUIRED for RoleManager and [Authorize(Roles=...)]
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-// --- MVC ---
+// --- MVC & Services ---
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<Quiz_Application_College.Services.Student.AvailableQuizService>();
 builder.Services.AddScoped<Quiz_Application_College.Services.Reports.ExportService>();
-
 
 var app = builder.Build();
 
 // --- Seed roles & users (runs once at startup) ---
 await IdentitySeed.SeedAsync(app.Services);
 
-// --- Seed demo data (ONLY in Development environment) ---
-await IdentitySeed.SeedAsync(app.Services);
+// --- Demo data only in Development ---
 if (app.Environment.IsDevelopment())
 {
     await DemoSeed.SeedAsync(app.Services);
-}
-
-// --- Pipeline ---
-if (app.Environment.IsDevelopment())
-{
     app.UseMigrationsEndPoint();
 }
 else
@@ -87,7 +100,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// IMPORTANT: Authentication BEFORE Authorization
+// Authentication BEFORE Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -97,12 +110,12 @@ app.MapControllerRoute(
     name: "areas",
     pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
 
-// Default MVC route -> go through Dashboard
+// Default MVC route -> Dashboard
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
-// Identity UI pages (Login/Register/Manage)
+// Identity UI pages
 app.MapRazorPages();
 
 app.Run();

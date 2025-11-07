@@ -5,7 +5,7 @@ using Quiz_Application_College.Services.Student;
 namespace Quiz_Application_College.Areas.Student.Controllers
 {
     [Area("Student")]
-    [Authorize(Roles = "Student")]
+    [Authorize(AuthenticationSchemes = "StudentCookie", Roles = "Student")]
     public class DashboardController : Controller
     {
         private readonly AvailableQuizService _svc;

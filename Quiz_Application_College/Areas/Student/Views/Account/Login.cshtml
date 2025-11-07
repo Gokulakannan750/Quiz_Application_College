@@ -1,0 +1,48 @@
+﻿@model Quiz_Application_College.Areas.Student.Controllers.AccountController.LoginVm
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml"; // or student layout
+    ViewData["Title"] = "Student Login";
+}
+<div class="container py-5" style="max-width:520px;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="mb-3">Student Login</h3>
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert alert-danger">
+                    @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        <div>@err.ErrorMessage</div>
+                    }
+                </div>
+            }
+
+            <form method="post" action="/Student/Account/Login">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ReturnUrl" value="@Model?.ReturnUrl" />
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input name="Email" class="form-control" value="@Model?.Email" autocomplete="username" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Roll Number (Password)</label>
+                    <input name="Password" type="password" class="form-control" autocomplete="current-password" />
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="rememberMe" name="RememberMe" value="true" />
+                    <label class="form-check-label" for="rememberMe">Remember me</label>
+                </div>
+
+                <button class="btn btn-primary w-100">Login</button>
+
+                <div class="text-muted small mt-3">
+                    Use your <b>email</b> and your <b>roll number</b> as password.
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

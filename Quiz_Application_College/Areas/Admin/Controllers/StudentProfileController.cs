@@ -1,5 +1,4 @@
-﻿using System.Text;
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +6,9 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
+using Quiz_Application_College.Services.Security;
 using Quiz_Application_College.ViewModels;
+using System.Text;
 
 namespace Quiz_Application_College.Areas.Admin.Controllers
 {
@@ -50,7 +51,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
         [HttpGet("Browse")]
         public async Task<IActionResult> Browse([FromQuery] StudentBrowseVm vm)
         {
-            // dropdowns
+            // Dropdowns
             var colleges = await _db.StudentProfiles
                 .Select(p => p.College).Distinct().OrderBy(s => s).ToListAsync();
             vm.CollegeOptions = new SelectList(colleges);
@@ -61,70 +62,80 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             var depts = await deptQuery.Select(p => p.Department).Distinct().OrderBy(s => s).ToListAsync();
             vm.DepartmentOptions = new SelectList(depts);
 
-            // base query
-            var q = _db.StudentProfiles
-                .Join(_db.Users, p => p.UserId, u => u.Id, (p, u) => new { p, u })
-                .AsQueryable();
+            // Base query (NO AspNetUsers join)
+            var q = _db.StudentProfiles.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(vm.College))
-                q = q.Where(x => x.p.College == vm.College);
+                q = q.Where(p => p.College == vm.College);
             if (!string.IsNullOrWhiteSpace(vm.Department))
-                q = q.Where(x => x.p.Department == vm.Department);
+                q = q.Where(p => p.Department == vm.Department);
             if (!string.IsNullOrWhiteSpace(vm.Search))
             {
                 var s = vm.Search.Trim().ToLower();
-                q = q.Where(x =>
-                    (x.p.Name != null && x.p.Name.ToLower().Contains(s)) ||
-                    (x.p.RollNumber != null && x.p.RollNumber.ToLower().Contains(s)) ||
-                    (x.u.Email != null && x.u.Email.ToLower().Contains(s)));
+                q = q.Where(p =>
+                    (!string.IsNullOrEmpty(p.Name) && p.Name.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(p.RollNumber) && p.RollNumber.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(p.Email) && p.Email.ToLower().Contains(s)));
             }
 
             vm.Total = await q.CountAsync();
 
-            // page
+            // Page
             var skip = (vm.Page - 1) * vm.PageSize;
             var pageRows = await q
-                .OrderBy(x => x.p.College).ThenBy(x => x.p.Department).ThenBy(x => x.p.RollNumber)
+                .OrderBy(p => p.College).ThenBy(p => p.Department).ThenBy(p => p.RollNumber)
                 .Skip(skip).Take(vm.PageSize)
-                .Select(x => new StudentBrowseVm.Row
+                .Select(p => new StudentBrowseVm.Row
                 {
-                    UserId = x.p.UserId,
-                    College = x.p.College,
-                    Department = x.p.Department,
-                    RollNumber = x.p.RollNumber,
-                    Name = x.p.Name,
-                    Email = x.u.Email ?? "",
-                    CreatedAt = x.p.CreatedAt
+                    // keep UserId if you still have it on StudentProfile (used to match Enrollment.UserId)
+                    UserId = p.UserId ?? string.Empty,
+                    College = p.College,
+                    Department = p.Department,
+                    RollNumber = p.RollNumber,
+                    Name = p.Name,
+                    Email = p.Email,
+                    CreatedAt = p.CreatedAt
                 })
                 .ToListAsync();
 
-            // enrollments for these users
-            var userIds = pageRows.Select(r => r.UserId).Distinct().ToList();
+            // Build a map: UserId -> Email (from current page)
+            var userIdToEmail = pageRows
+                .Where(r => !string.IsNullOrWhiteSpace(r.UserId))
+                .GroupBy(r => r.UserId)
+                .ToDictionary(g => g.Key!, g => g.Select(x => x.Email ?? string.Empty).FirstOrDefault() ?? string.Empty);
 
+            // Collect UserIds from current page to look up enrollments
+            var userIds = userIdToEmail.Keys.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+
+            // Pull enrollments by UserId and group them per user
             var enrollments = await _db.Enrollments
                 .Include(e => e.Quiz)
                 .Where(e => userIds.Contains(e.UserId) && e.Quiz != null)
                 .Select(e => new { e.UserId, e.Quiz!.Title, e.Quiz!.Type })
                 .ToListAsync();
 
-            var grouped = enrollments
+            // Group by UserId → then attach to rows (split MCQ vs Coding)
+            var groupedByUser = enrollments
                 .GroupBy(e => e.UserId)
                 .ToDictionary(
                     g => g.Key,
                     g => new
                     {
-                        Mcq = g.Where(x => x.Type == QuizType.Mcq)
-                               .Select(x => x.Title).Distinct().ToList(),
-                        Coding = g.Where(x => x.Type == QuizType.Coding)
-                                 .Select(x => x.Title).Distinct().ToList()
+                        Mcq = g.Where(x => x.Type == QuizType.Mcq).Select(x => x.Title).Distinct().ToList(),
+                        Coding = g.Where(x => x.Type == QuizType.Coding).Select(x => x.Title).Distinct().ToList()
                     });
 
             foreach (var row in pageRows)
             {
-                if (grouped.TryGetValue(row.UserId, out var lists))
+                if (!string.IsNullOrWhiteSpace(row.UserId) && groupedByUser.TryGetValue(row.UserId, out var lists))
                 {
                     row.McqQuizzes = lists.Mcq;
                     row.CodingQuizzes = lists.Coding;
+                }
+                else
+                {
+                    row.McqQuizzes = new List<string>();
+                    row.CodingQuizzes = new List<string>();
                 }
             }
 
@@ -163,10 +174,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 return RedirectToAction(nameof(Import));
             }
 
-            if (!await _roleManager.RoleExistsAsync("Student"))
-                await _roleManager.CreateAsync(new IdentityRole("Student"));
-
-            int usersCreated = 0, profilesCreated = 0, profilesUpdated = 0, rows = 0;
+            int profilesCreated = 0, profilesUpdated = 0, rows = 0;
             var errors = new List<string>();
 
             try
@@ -210,63 +218,72 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                         if (string.IsNullOrWhiteSpace(roll))
                         { errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: Missing roll number."); continue; }
 
-                        // user find/create
-                        var user = await _userManager.Users.FirstOrDefaultAsync(u =>
-                            u.Email != null && u.Email.ToLower() == email.ToLower());
-
-                        if (user == null)
+                        try
                         {
-                            user = new IdentityUser { UserName = roll, Email = email, EmailConfirmed = true };
-                            var pwd = "Student@12345";
-                            var createRes = await _userManager.CreateAsync(user, pwd);
-                            if (!createRes.Succeeded)
-                            { errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: {string.Join("; ", createRes.Errors.Select(e => e.Description))}"); continue; }
+                            // Upsert by Email in StudentProfiles only
+                            var profile = await _db.StudentProfiles
+                                .FirstOrDefaultAsync(p => p.Email.ToLower() == email.ToLower());
 
-                            await _userManager.AddToRoleAsync(user, "Student");
-                            usersCreated++;
-                        }
-                        else
-                        {
-                            if (!string.Equals(user.UserName, roll, StringComparison.Ordinal))
+                            if (profile == null)
                             {
-                                user.UserName = roll;
-                                await _userManager.UpdateAsync(user);
+                                var saltBytes = StudentPasswordHasher.NewSalt();
+                                var saltB64 = Convert.ToBase64String(saltBytes);
+                                var hashB64 = StudentPasswordHasher.Hash(roll, saltBytes);
+
+                                profile = new StudentProfile
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Email = email,
+                                    Name = name,
+                                    RollNumber = roll,
+                                    College = collegeName,
+                                    Department = department,
+                                    PasswordSalt = saltB64,
+                                    PasswordHash = hashB64,
+                                    IsActive = true,
+                                    CreatedAt = DateTimeOffset.UtcNow
+                                };
+
+                                _db.StudentProfiles.Add(profile);
+                                profilesCreated++;
                             }
-                        }
-
-                        // profile upsert
-                        var profile = await _db.StudentProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
-                        if (profile == null)
-                        {
-                            _db.StudentProfiles.Add(new StudentProfile
+                            else
                             {
-                                UserId = user.Id,
-                                College = collegeName,
-                                Department = department,
-                                RollNumber = roll,
-                                Name = name
-                            });
-                            profilesCreated++;
+                                profile.Email = email;
+                                profile.Name = name;
+                                profile.RollNumber = roll;
+                                profile.College = collegeName;
+                                profile.Department = department;
+                                profile.CreatedAt = DateTimeOffset.UtcNow;
+
+                                var saltBytes = StudentPasswordHasher.NewSalt();
+                                profile.PasswordSalt = Convert.ToBase64String(saltBytes);
+                                profile.PasswordHash = StudentPasswordHasher.Hash(roll, saltBytes);
+                                profile.IsActive = true;
+
+                                profilesUpdated++;
+                            }
+
+                            await _db.SaveChangesAsync();
                         }
-                        else
+                        catch (DbUpdateException ex)
                         {
-                            profile.College = collegeName;
-                            profile.Department = department;
-                            profile.RollNumber = roll;
-                            profile.Name = name;
-                            profilesUpdated++;
+                            var baseMsg = ex.GetBaseException()?.Message ?? ex.Message;
+                            errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: DB save failed → {baseMsg}");
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: {ex.Message}");
                         }
                     }
                 }
-
-                await _db.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 errors.Add("Import failed: " + ex.Message);
             }
 
-            TempData["Ok"] = $"Import complete. Rows: {rows}, Users created: {usersCreated}, Profiles added: {profilesCreated}, Profiles updated: {profilesUpdated}.";
+            TempData["Ok"] = $"Import complete. Rows: {rows}, Profiles added: {profilesCreated}, Profiles updated: {profilesUpdated}.";
             if (errors.Any()) TempData["Err"] = string.Join("<br/>", errors);
 
             return RedirectToAction(nameof(Import));
