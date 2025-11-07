@@ -1,12 +1,13 @@
 ﻿@model Quiz_Application_College.ViewModels.StudentEnrolledBrowseVm
 @{
-    ViewData["Title"] = "Coding — Filter & Enroll Students";
+    ViewData["Title"] = "MCQ — Filter & Enroll Students";
     var sched = ViewBag.ScheduleOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
 }
+
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Coding — Filter & Enroll Students</h2>
-        <a class="btn btn-outline-secondary" href="/Admin/Coding/Enrollment">Back</a>
+        <h2 class="mb-0">MCQ — Filter & Enroll Students</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/MCQ/Enrollment">Back</a>
     </div>
 
     @if (TempData["Ok"] != null)
@@ -18,7 +19,7 @@
         <div class="alert alert-danger">@Html.Raw(TempData["Err"])</div>
     }
 
-    <form method="get" action="/Admin/Coding/Enrollment/Create" class="card shadow-sm mb-3">
+    <form method="get" action="/Admin/MCQ/Enrollment/FilterEnroll" class="card shadow-sm mb-3">
         <div class="card-body row g-3">
             <div class="col-md-3">
                 <label class="form-label">College</label>
@@ -41,13 +42,13 @@
         </div>
         <div class="card-footer d-flex gap-2">
             <button class="btn btn-primary">Filter</button>
-            <a class="btn btn-outline-secondary" href="/Admin/Coding/Enrollment/Create">Clear</a>
+            <a class="btn btn-outline-secondary" href="/Admin/MCQ/Enrollment/FilterEnroll">Clear</a>
         </div>
     </form>
 
     <div class="card shadow-sm mb-3">
         <div class="card-body">
-            <form method="post" action="/Admin/Coding/Enrollment/Create">
+            <form method="post" action="/Admin/MCQ/Enrollment/FilterEnroll">
                 @Html.AntiForgeryToken()
                 <label class="form-label">Enroll all FILTERED students to schedule</label>
                 <select name="scheduleId" class="form-select" asp-items="sched">
@@ -64,21 +65,14 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-sm align-middle">
+                <table class="table table-sm">
                     <thead><tr><th>College</th><th>Dept</th><th>Roll</th><th>Name</th><th>Email</th><th>Created</th></tr></thead>
                     <tbody>
                         @if (Model.Rows.Any())
                         {
                             foreach (var r in Model.Rows)
                             {
-                                <tr>
-                                    <td>@r.College</td>
-                                    <td>@r.Department</td>
-                                    <td>@r.RollNumber</td>
-                                    <td>@r.Name</td>
-                                    <td>@r.Email</td>
-                                    <td>@r.CreatedAt</td>
-                                </tr>
+                                <tr><td>@r.College</td><td>@r.Department</td><td>@r.RollNumber</td><td>@r.Name</td><td>@r.Email</td><td>@r.CreatedAt</td></tr>
                             }
                         }
                         else
@@ -87,24 +81,6 @@
                         }
                     </tbody>
                 </table>
-            </div>
-
-            @{
-                int last = (int)Math.Ceiling((double)Math.Max(Model.Total, 1) / Math.Max(Model.PageSize, 1));
-                int prev = Math.Max(1, Model.Page - 1);
-                int next = Math.Min(last, Model.Page + 1);
-                string baseUrl = Url.Content("~/Admin/Coding/Enrollment/Create");
-                string qBase = $"?College={Model.College}&Department={Model.Department}&Search={Model.Search}&PageSize={Model.PageSize}";
-            }
-            <div class="d-flex justify-content-between align-items-center mt-2">
-                <div>Showing @(Model.Rows.Count) of @Model.Total</div>
-                <div class="btn-group">
-                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page=1")">First</a>
-                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page={prev}")">Prev</a>
-                    <span class="btn btn-sm btn-outline-dark disabled">Page @Model.Page of @last</span>
-                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page={next}")">Next</a>
-                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page={last}")">Last</a>
-                </div>
             </div>
         </div>
     </div>
