@@ -1,26 +1,116 @@
-﻿@model Quiz_Application_College.ViewModels.EnrollmentCreateVm
+﻿@model Quiz_Application_College.ViewModels.StudentEnrolledBrowseVm
 @{
-    ViewData["Title"] = "Add Enrollment";
+    ViewData["Title"] = "MCQ — Filter & Enroll Students";
+    var sched = ViewBag.ScheduleOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
 }
-<h2>Add Enrollment</h2>
-
-<form asp-action="Create" method="post">
-    <div class="mb-3">
-        <label class="form-label">Quiz</label>
-        <select asp-for="QuizId" class="form-select" asp-items="ViewBag.QuizOptions"></select>
-        <span asp-validation-for="QuizId" class="text-danger"></span>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">MCQ — Filter & Enroll Students</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/MCQ/Enrollment">Back</a>
     </div>
 
-    <div class="mb-3">
-        <label asp-for="Email" class="form-label"></label>
-        <input asp-for="Email" class="form-control" placeholder="student1@quiz.local" />
-        <span asp-validation-for="Email" class="text-danger"></span>
+    @if (TempData["Ok"] != null)
+    {
+        <div class="alert alert-success">@Html.Raw(TempData["Ok"])</div>
+    }
+    @if (TempData["Err"] != null)
+    {
+        <div class="alert alert-danger">@Html.Raw(TempData["Err"])</div>
+    }
+
+    <!-- FILTERS -->
+    <form method="get" action="/Admin/MCQ/Enrollment/Create" class="card shadow-sm mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">College</label>
+                <select name="College" id="collegeSelect" class="form-select" asp-items="Model.CollegeOptions">
+                    <option value="">All</option>
+                </select>
+                <script>(()=>{const s=document.getElementById('collegeSelect'); if(s) s.value='@Model.College';})();</script>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Department</label>
+                <select name="Department" id="deptSelect" class="form-select" asp-items="Model.DepartmentOptions">
+                    <option value="">All</option>
+                </select>
+                <script>(()=>{const s=document.getElementById('deptSelect'); if(s) s.value='@Model.Department';})();</script>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Search</label>
+                <input name="Search" value="@Model.Search" class="form-control" placeholder="name / roll / email" />
+            </div>
+        </div>
+        <div class="card-footer d-flex gap-2">
+            <button class="btn btn-primary">Filter</button>
+            <a class="btn btn-outline-secondary" href="/Admin/MCQ/Enrollment/Create">Clear</a>
+        </div>
+    </form>
+
+    <!-- ENROLL ALL FILTERED -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="post" action="/Admin/MCQ/Enrollment/Create">
+                @Html.AntiForgeryToken()
+                <label class="form-label">Enroll all FILTERED students to schedule</label>
+                <select name="scheduleId" class="form-select" asp-items="sched">
+                    <option value="">-- Select Schedule --</option>
+                </select>
+                <!-- carry filters -->
+                <input type="hidden" name="College" value="@Model.College" />
+                <input type="hidden" name="Department" value="@Model.Department" />
+                <input type="hidden" name="Search" value="@Model.Search" />
+                <button class="btn btn-success mt-3" onclick="return confirm('Enroll ALL filtered students?');">Enroll Filtered</button>
+            </form>
+        </div>
     </div>
 
-    <button class="btn btn-success" type="submit">Save</button>
-    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
-</form>
+    <!-- RESULTS -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>College</th><th>Dept</th><th>Roll</th><th>Name</th><th>Email</th><th>Created</th></tr></thead>
+                    <tbody>
+                        @if (Model.Rows.Any())
+                        {
+                            foreach (var r in Model.Rows)
+                            {
+                                <tr>
+                                    <td>@r.College</td>
+                                    <td>@r.Department</td>
+                                    <td>@r.RollNumber</td>
+                                    <td>@r.Name</td>
+                                    <td>@r.Email</td>
+                                    <td>@r.CreatedAt</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="6" class="text-center text-muted">No students found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
+            <!-- simple pager -->
+            @{
+                int last = (int)Math.Ceiling((double)Math.Max(Model.Total, 1) / Math.Max(Model.PageSize, 1));
+                int prev = Math.Max(1, Model.Page - 1);
+                int next = Math.Min(last, Model.Page + 1);
+                string baseUrl = Url.Content("~/Admin/MCQ/Enrollment/Create");
+                string qBase = $"?College={Model.College}&Department={Model.Department}&Search={Model.Search}&PageSize={Model.PageSize}";
+            }
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <div>Showing @(Model.Rows.Count) of @Model.Total</div>
+                <div class="btn-group">
+                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page=1")">First</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page={prev}")">Prev</a>
+                    <span class="btn btn-sm btn-outline-dark disabled">Page @Model.Page of @last</span>
+                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page={next}")">Next</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="@($"{baseUrl}{qBase}&Page={last}")">Last</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

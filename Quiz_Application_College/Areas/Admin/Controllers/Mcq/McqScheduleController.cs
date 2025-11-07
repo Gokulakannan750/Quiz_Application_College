@@ -24,6 +24,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         {
             var data = await _db.QuizSchedules
                 .Include(s => s.Quiz)
+                .Where(s => s.Quiz != null && s.Quiz.Type == QuizType.Mcq)
                 .OrderByDescending(s => s.StartAt)
                 .ToListAsync();
 

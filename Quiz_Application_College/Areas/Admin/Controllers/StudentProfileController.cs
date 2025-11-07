@@ -3,14 +3,17 @@ using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
+using Quiz_Application_College.ViewModels;
 
 namespace Quiz_Application_College.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Authorize(Policy = "IsAdmin")]
+    // support both plural and "students" paths
     [Route("Admin/StudentProfiles")]
     [Route("Admin/Students")]
     public class StudentProfileController : Controller
@@ -29,7 +32,10 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             _roleManager = roleManager;
         }
 
-        // GET: /Admin/StudentProfiles
+        // --------------------------------------------------------------------
+        // DASHBOARD TILE
+        // GET: /Admin/StudentProfiles   (or /Admin/Students)
+        // --------------------------------------------------------------------
         [HttpGet("")]
         [HttpGet("Index")]
         public IActionResult Index()
@@ -37,14 +43,109 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             return View("~/Areas/Admin/Views/StudentProfiles/Index.cshtml");
         }
 
-        // GET: /Admin/StudentProfiles/Import
+        // --------------------------------------------------------------------
+        // BROWSE (READ-ONLY): filter + show MCQ/Coding enrollments per student
+        // GET: /Admin/StudentProfiles/Browse
+        // --------------------------------------------------------------------
+        [HttpGet("Browse")]
+        public async Task<IActionResult> Browse([FromQuery] StudentBrowseVm vm)
+        {
+            // dropdowns
+            var colleges = await _db.StudentProfiles
+                .Select(p => p.College).Distinct().OrderBy(s => s).ToListAsync();
+            vm.CollegeOptions = new SelectList(colleges);
+
+            var deptQuery = _db.StudentProfiles.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(vm.College))
+                deptQuery = deptQuery.Where(p => p.College == vm.College);
+            var depts = await deptQuery.Select(p => p.Department).Distinct().OrderBy(s => s).ToListAsync();
+            vm.DepartmentOptions = new SelectList(depts);
+
+            // base query
+            var q = _db.StudentProfiles
+                .Join(_db.Users, p => p.UserId, u => u.Id, (p, u) => new { p, u })
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(vm.College))
+                q = q.Where(x => x.p.College == vm.College);
+            if (!string.IsNullOrWhiteSpace(vm.Department))
+                q = q.Where(x => x.p.Department == vm.Department);
+            if (!string.IsNullOrWhiteSpace(vm.Search))
+            {
+                var s = vm.Search.Trim().ToLower();
+                q = q.Where(x =>
+                    (x.p.Name != null && x.p.Name.ToLower().Contains(s)) ||
+                    (x.p.RollNumber != null && x.p.RollNumber.ToLower().Contains(s)) ||
+                    (x.u.Email != null && x.u.Email.ToLower().Contains(s)));
+            }
+
+            vm.Total = await q.CountAsync();
+
+            // page
+            var skip = (vm.Page - 1) * vm.PageSize;
+            var pageRows = await q
+                .OrderBy(x => x.p.College).ThenBy(x => x.p.Department).ThenBy(x => x.p.RollNumber)
+                .Skip(skip).Take(vm.PageSize)
+                .Select(x => new StudentBrowseVm.Row
+                {
+                    UserId = x.p.UserId,
+                    College = x.p.College,
+                    Department = x.p.Department,
+                    RollNumber = x.p.RollNumber,
+                    Name = x.p.Name,
+                    Email = x.u.Email ?? "",
+                    CreatedAt = x.p.CreatedAt
+                })
+                .ToListAsync();
+
+            // enrollments for these users
+            var userIds = pageRows.Select(r => r.UserId).Distinct().ToList();
+
+            var enrollments = await _db.Enrollments
+                .Include(e => e.Quiz)
+                .Where(e => userIds.Contains(e.UserId) && e.Quiz != null)
+                .Select(e => new { e.UserId, e.Quiz!.Title, e.Quiz!.Type })
+                .ToListAsync();
+
+            var grouped = enrollments
+                .GroupBy(e => e.UserId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        Mcq = g.Where(x => x.Type == QuizType.Mcq)
+                               .Select(x => x.Title).Distinct().ToList(),
+                        Coding = g.Where(x => x.Type == QuizType.Coding)
+                                 .Select(x => x.Title).Distinct().ToList()
+                    });
+
+            foreach (var row in pageRows)
+            {
+                if (grouped.TryGetValue(row.UserId, out var lists))
+                {
+                    row.McqQuizzes = lists.Mcq;
+                    row.CodingQuizzes = lists.Coding;
+                }
+            }
+
+            vm.Rows = pageRows;
+            return View("~/Areas/Admin/Views/StudentProfiles/Browse.cshtml", vm);
+        }
+
+        // --------------------------------------------------------------------
+        // IMPORT (GET)
+        // --------------------------------------------------------------------
         [HttpGet("Import")]
         public IActionResult Import()
         {
             return View("~/Areas/Admin/Views/StudentProfiles/Import.cshtml");
         }
 
-        // POST: /Admin/StudentProfiles/Import
+        // --------------------------------------------------------------------
+        // IMPORT (POST): filename => College; sheet names => Departments;
+        // headers: Name, Email, RollNumber
+        // Creates/updates Identity users + StudentProfiles
+        // --------------------------------------------------------------------
         [HttpPost("Import")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Import(IFormFile file)
@@ -62,7 +163,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 return RedirectToAction(nameof(Import));
             }
 
-            // Ensure Student role exists
             if (!await _roleManager.RoleExistsAsync("Student"))
                 await _roleManager.CreateAsync(new IdentityRole("Student"));
 
@@ -82,11 +182,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                     if (string.IsNullOrWhiteSpace(department)) continue;
 
                     var headerRow = ws.FirstRowUsed();
-                    if (headerRow == null)
-                    {
-                        errors.Add($"Sheet '{ws.Name}': No data.");
-                        continue;
-                    }
+                    if (headerRow == null) { errors.Add($"Sheet '{ws.Name}': No data."); continue; }
 
                     var headers = headerRow.CellsUsed().ToDictionary(
                         c => c.GetString().Trim().ToLowerInvariant(),
@@ -100,10 +196,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                                 : headers.ContainsKey("roll no") ? headers["roll no"] : -1;
 
                     if (colName == -1 || colEmail == -1 || colRoll == -1)
-                    {
-                        errors.Add($"Sheet '{ws.Name}': Missing required headers (Name, Email, RollNumber).");
-                        continue;
-                    }
+                    { errors.Add($"Sheet '{ws.Name}': Missing headers (Name, Email, RollNumber)."); continue; }
 
                     foreach (var row in ws.RowsUsed().Skip(1))
                     {
@@ -113,42 +206,27 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                         var roll = row.Cell(colRoll).GetString().Trim();
 
                         if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
-                        {
-                            errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: Invalid email.");
-                            continue;
-                        }
+                        { errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: Invalid email."); continue; }
                         if (string.IsNullOrWhiteSpace(roll))
-                        {
-                            errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: Missing roll number.");
-                            continue;
-                        }
+                        { errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: Missing roll number."); continue; }
 
-                        // Find or create Identity user
+                        // user find/create
                         var user = await _userManager.Users.FirstOrDefaultAsync(u =>
                             u.Email != null && u.Email.ToLower() == email.ToLower());
 
                         if (user == null)
                         {
-                            user = new IdentityUser
-                            {
-                                // Login can accept roll or email if your login logic supports both:
-                                UserName = roll,
-                                Email = email,
-                                EmailConfirmed = true
-                            };
-                            var pwd = "Student@12345"; // TODO: change/reset policy
+                            user = new IdentityUser { UserName = roll, Email = email, EmailConfirmed = true };
+                            var pwd = "Student@12345";
                             var createRes = await _userManager.CreateAsync(user, pwd);
                             if (!createRes.Succeeded)
-                            {
-                                errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: Create user failed ({string.Join("; ", createRes.Errors.Select(e => e.Description))}).");
-                                continue;
-                            }
+                            { errors.Add($"Sheet '{ws.Name}' Row {row.RowNumber()}: {string.Join("; ", createRes.Errors.Select(e => e.Description))}"); continue; }
+
                             await _userManager.AddToRoleAsync(user, "Student");
                             usersCreated++;
                         }
                         else
                         {
-                            // Optionally align username to roll number
                             if (!string.Equals(user.UserName, roll, StringComparison.Ordinal))
                             {
                                 user.UserName = roll;
@@ -156,7 +234,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                             }
                         }
 
-                        // Upsert StudentProfile
+                        // profile upsert
                         var profile = await _db.StudentProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
                         if (profile == null)
                         {
@@ -194,7 +272,10 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             return RedirectToAction(nameof(Import));
         }
 
-        // Optional: CSV/XLSX template
+        // --------------------------------------------------------------------
+        // simple CSV template
+        // GET: /Admin/StudentProfiles/Template
+        // --------------------------------------------------------------------
         [HttpGet("Template")]
         public FileContentResult Template()
         {
