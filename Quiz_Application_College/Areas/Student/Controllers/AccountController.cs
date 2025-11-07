@@ -75,7 +75,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers
             if (!string.IsNullOrWhiteSpace(vm.ReturnUrl) && Url.IsLocalUrl(vm.ReturnUrl))
                 return Redirect(vm.ReturnUrl);
 
-            return Redirect("/Student/Dashboard");
+            return Redirect("/Student/Home");
         }
 
         [HttpPost("Logout")]
