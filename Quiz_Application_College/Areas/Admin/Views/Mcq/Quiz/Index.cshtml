@@ -40,7 +40,6 @@
                                     <td>@q.CreatedAt.ToLocalTime().ToString("g")</td>
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-primary" href="/Admin/MCQ/Quiz/Edit/@q.Id">Edit</a>
-                                        <a class="btn btn-sm btn-outline-secondary" href="/Admin/MCQ/Quiz/Assign/@q.Id">Assign</a>
                                         <a class="btn btn-sm btn-outline-secondary" href="/Admin/MCQ/Quiz/Questions/@q.Id">Questions</a>
 
                                         <form method="post" action="/Admin/MCQ/Quiz/@(q.IsPublished ? "Unpublish" : "Publish")/@q.Id" class="d-inline">
