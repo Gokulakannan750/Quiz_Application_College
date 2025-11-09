@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.Domain.Coding;
+using System.Reflection.Emit;
 
 namespace Quiz_Application_College.Data
 {
@@ -40,9 +41,16 @@ namespace Quiz_Application_College.Data
                 .HasIndex(s => new { s.QuizId, s.StartAt, s.EndAt });
 
             // ===== Enrollments =====
-            b.Entity<Enrollment>()
-                .HasIndex(e => new { e.QuizId, e.UserId })
-                .IsUnique();
+            b.Entity<Enrollment>(b =>
+            {
+                b.HasKey(e => e.Id);
+                b.HasOne(e => e.Quiz).WithMany().HasForeignKey(e => e.QuizId).OnDelete(DeleteBehavior.Cascade);
+
+                b.Property(e => e.UserId).IsRequired(false);
+                b.HasOne(e => e.StudentProfile).WithMany().HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(e => new { e.QuizId, e.StudentProfileId }).IsUnique();   // << correct unique key
+            });
 
             // ===== Attempts =====
             b.Entity<Attempt>()

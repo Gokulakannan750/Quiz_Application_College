@@ -1,67 +1,59 @@
-﻿@model IEnumerable<Quiz_Application_College.Areas.Admin.Controllers.Coding.EnrollmentController.EnrollmentRow>
+﻿@model IEnumerable<Quiz_Application_College.ViewModels.Coding.EnrollmentRowVm>
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
-    ViewData["Title"] = "Coding Enrollments";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Coding — Enrollments";
+}
+<div class="d-flex align-items-center mb-3">
+    <h2 class="mb-0">Coding — Enrollments</h2>
+    <a asp-route="AdminCodingEnrollmentCreate" class="btn btn-primary ms-auto">Enroll Students</a>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
 }
 
-<a class="btn btn-outline-primary" href="FilterEnroll">Filter & Enroll</a>
-
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Coding Enrollments</h2>
-        <div class="d-flex gap-2">
-            <a class="btn btn-primary" href="/Admin/Coding/Enrollment/Create">New Enrollment</a>
-            <a class="btn btn-outline-secondary" href="/Admin/Coding">Back to Coding Dashboard</a>
-        </div>
-    </div>
-
-    @if (TempData["Ok"] != null)
-    {
-        <div class="alert alert-success">@TempData["Ok"]</div>
-    }
-    @if (TempData["Err"] != null)
-    {
-        <div class="alert alert-danger">@TempData["Err"]</div>
-    }
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm align-middle">
-                    <thead>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Quiz</th>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var e in Model)
+                    {
                         <tr>
-                            <th>Quiz</th>
-                            <th>Student Email</th>
-                            <th>Created</th>
-                            <th class="text-end">Actions</th>
+                            <td>@e.QuizTitle</td>
+                            <td>@e.UserId</td>
+                            <td>@e.Email</td>
+                            <td>@e.CreatedAt.ToLocalTime().ToString("g")</td>
+                            <td class="text-end">
+                                <a asp-area="Admin" asp-controller="Enrollment" asp-action="Edit" asp-route-id="@e.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <form asp-area="Admin" asp-controller="Enrollment" asp-action="Delete" asp-route-id="@e.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this enrollment?')">Delete</button>
+                                </form>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model != null && Model.Any())
-                        {
-                            foreach (var e in Model)
-                            {
-                                <tr>
-                                    <td>@e.QuizTitle</td>
-                                    <td>@e.UserEmail</td>
-                                    <td>@e.CreatedAt</td>
-                                    <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-primary me-1" href="/Admin/Coding/Enrollment/Edit/@e.Id">Edit</a>
-                                        <form method="post" action="/Admin/Coding/Enrollment/Delete/@e.Id" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this enrollment?');">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr><td colspan="4" class="text-center text-muted">No enrollments yet.</td></tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center text-muted">No enrollments found.</td></tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>

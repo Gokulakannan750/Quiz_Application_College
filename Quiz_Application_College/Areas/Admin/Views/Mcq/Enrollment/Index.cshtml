@@ -1,44 +1,53 @@
-﻿@model IEnumerable<Quiz_Application_College.Domain.Enrollment>
+﻿@model IEnumerable<dynamic>
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
-    ViewData["Title"] = "Enrollments";
-    var emails = (IDictionary<string, string>)ViewBag.UserEmails;
+    ViewData["Title"] = "MCQ — Enrollments";
 }
-<h2>Enrollments</h2>
-<p>
-    <a asp-action="Create" class="btn btn-primary">Add Enrollment</a>
-</p>
+<div class="d-flex align-items-center mb-3">
+    <h2 class="mb-0">MCQ — Enrollments</h2>
+    <a asp-route="AdminMcqEnrollmentCreate" class="btn btn-primary ms-auto">Enroll Students</a>
+</div>
 
-@if (Model == null || !Model.Any())
+@if (TempData["Ok"] is string ok)
 {
-    <div class="alert alert-info">No enrollments yet. Click <a asp-action="Create">Add Enrollment</a>.</div>
+    <div class="alert alert-success">@ok</div>
 }
-else
+@if (TempData["Err"] is string err)
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Quiz</th>
-                <th>User</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var e in Model)
-            {
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
                 <tr>
-                    <td>@e.Quiz?.Title</td>
-                    <td>@(emails.TryGetValue(e.UserId, out var mail) ? mail : e.UserId)</td>
-                    <td>@e.Status</td>
-                    <td>
-                        <form asp-action="Delete" method="post" asp-route-id="@e.Id" onsubmit="return confirm('Remove this enrollment?');">
-                            @Html.AntiForgeryToken()
-                            <button class="btn btn-sm btn-danger">Delete</button>
-                        </form>
-
-                    </td>
+                    <th>Quiz</th>
+                    <th>Roll</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Enrolled At</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var e in Model)
+                    {
+                        <tr>
+                            <td>@e.QuizTitle</td>
+                            <td>@e.Roll</td>
+                            <td>@e.Name</td>
+                            <td>@e.Email</td>
+                            <td>@(((DateTimeOffset)e.CreatedAt).ToLocalTime().ToString("g"))</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center text-muted">No enrollments found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

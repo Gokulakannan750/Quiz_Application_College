@@ -35,28 +35,40 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
             };
 
             // Recent Enrollments (latest 10)
+            // Recent Enrollments (latest 10)
             var re = await _db.Enrollments
                 .Include(e => e.Quiz)
                 .OrderByDescending(e => e.CreatedAt)
                 .Take(10)
                 .ToListAsync();
 
-            var enrollUserIds = re.Select(x => x.UserId).Distinct().ToList();
+            // Filter out null/empty user IDs BEFORE hitting Identity
+            var enrollUserIds = re.Select(x => x.UserId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
             var enrollEmails = new Dictionary<string, string>();
             foreach (var id in enrollUserIds)
             {
+                // id is guaranteed non-null/non-empty here
                 var u = await _userManager.FindByIdAsync(id);
-                if (u != null) enrollEmails[id] = u.Email ?? id;
+                if (u != null) enrollEmails[id] = string.IsNullOrWhiteSpace(u.Email) ? id : u.Email!;
             }
+
+            // When mapping, NEVER pass a null key into TryGetValue
             vm.RecentEnrollments = re.Select(e => new AdminDashboardVm.EnrollmentRow
             {
                 Id = e.Id,
-                QuizId = e.QuizId,                     // <— ADD THIS
-                Email = enrollEmails.TryGetValue(e.UserId, out var mail) ? mail : e.UserId,
+                QuizId = e.QuizId,                     // keep existing property
+                Email = (!string.IsNullOrWhiteSpace(e.UserId) && enrollEmails.TryGetValue(e.UserId, out var mail))
+                            ? mail
+                            : (e.UserId ?? "-"),
                 QuizTitle = e.Quiz?.Title ?? "",
                 CreatedAt = e.CreatedAt,
                 Status = e.Status
             }).ToList();
+
 
 
             // Recent Attempts (latest 10)

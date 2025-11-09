@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -11,46 +10,44 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
     [Authorize(Policy = "IsAdmin")]
-    // Make the URL nice: /Admin/MCQ/Enrollment/...
+    // All MCQ enrollment URLs live under /Admin/MCQ/Enrollment/...
     [Route("Admin/MCQ/Enrollment")]
     public class McqEnrollmentController : Controller
     {
         private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
+        public McqEnrollmentController(ApplicationDbContext db) => _db = db;
 
-        public McqEnrollmentController(ApplicationDbContext db, UserManager<IdentityUser> userManager)
-        {
-            _db = db;
-            _userManager = userManager;
-        }
+        // ----------------- LIST -----------------
 
         // GET: /Admin/MCQ/Enrollment  and /Admin/MCQ/Enrollment/Index
-        [HttpGet("")]
+        [HttpGet("", Name = "AdminMcqEnrollmentIndex")]
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            var data = await _db.Enrollments
+            var rows = await _db.Enrollments
                 .Include(e => e.Quiz)
+                .Include(e => e.StudentProfile)
                 .Where(e => e.Quiz != null && e.Quiz.Type == QuizType.Mcq)
                 .OrderByDescending(e => e.CreatedAt)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.QuizId,
+                    QuizTitle = e.Quiz!.Title,
+                    Roll = e.StudentProfile!.RollNumber,
+                    Name = e.StudentProfile!.Name,
+                    Email = e.StudentProfile!.Email,
+                    e.CreatedAt
+                })
                 .ToListAsync();
 
-            // Load user emails in-memory (small join)
-            var userIds = data.Select(d => d.UserId).Distinct().ToList();
-            var emails = new Dictionary<string, string>();
-            foreach (var id in userIds)
-            {
-                var u = await _userManager.FindByIdAsync(id);
-                if (u != null) emails[id] = u.Email ?? id;
-            }
-            ViewBag.UserEmails = emails;
-
-            return View("~/Areas/Admin/Views/Mcq/Enrollment/Index.cshtml", data);
+            return View("~/Areas/Admin/Views/Mcq/Enrollment/Index.cshtml", rows);
         }
 
+        // ----------------- CREATE (filter + bulk enroll) -----------------
+
         // GET: /Admin/MCQ/Enrollment/Create
-        // GET: /Admin/MCQ/Enrollment/Create  --> Filter + Enroll UI
-        [HttpGet("Create")]
+        [HttpGet("Create", Name = "AdminMcqEnrollmentCreate")]
         public async Task<IActionResult> Create([FromQuery] StudentEnrolledBrowseVm vm)
         {
             // Dropdowns
@@ -64,36 +61,40 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             var depts = await deptQ.Select(p => p.Department).Distinct().OrderBy(s => s).ToListAsync();
             vm.DepartmentOptions = new SelectList(depts);
 
-            // Students (filtered + paged)
-            var q = _db.StudentProfiles.Join(_db.Users, p => p.UserId, u => u.Id, (p, u) => new { p, u }).AsQueryable();
-            if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(x => x.p.College == vm.College);
-            if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(x => x.p.Department == vm.Department);
+            // Filtered PROFILES (no Identity join)
+            var q = _db.StudentProfiles.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(p => p.College == vm.College);
+            if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(p => p.Department == vm.Department);
             if (!string.IsNullOrWhiteSpace(vm.Search))
             {
                 var s = vm.Search.Trim().ToLower();
-                q = q.Where(x =>
-                    (x.p.Name != null && x.p.Name.ToLower().Contains(s)) ||
-                    (x.p.RollNumber != null && x.p.RollNumber.ToLower().Contains(s)) ||
-                    (x.u.Email != null && x.u.Email.ToLower().Contains(s)));
+                q = q.Where(p =>
+                    (p.Name != null && p.Name.ToLower().Contains(s)) ||
+                    (p.RollNumber != null && p.RollNumber.ToLower().Contains(s)) ||
+                    (p.Email != null && p.Email.ToLower().Contains(s)));
             }
 
             vm.Total = await q.CountAsync();
             var skip = (vm.Page - 1) * vm.PageSize;
 
-            vm.Rows = await q.OrderBy(x => x.p.College).ThenBy(x => x.p.Department).ThenBy(x => x.p.RollNumber)
+            vm.Rows = await q
+                .OrderBy(p => p.College).ThenBy(p => p.Department).ThenBy(p => p.RollNumber)
                 .Skip(skip).Take(vm.PageSize)
-                .Select(x => new StudentEnrolledBrowseVm.Row
+                .Select(p => new StudentEnrolledBrowseVm.Row
                 {
-                    UserId = x.p.UserId,
-                    College = x.p.College,
-                    Department = x.p.Department,
-                    RollNumber = x.p.RollNumber,
-                    Name = x.p.Name,
-                    Email = x.u.Email ?? "",
-                    CreatedAt = x.p.CreatedAt
-                }).ToListAsync();
+                    // We don’t need UserId anymore
+                    College = p.College,
+                    Department = p.Department,
+                    RollNumber = p.RollNumber,
+                    Name = p.Name,
+                    Email = p.Email ?? "",
+                    CreatedAt = p.CreatedAt,
+                    // Keep an internal id if your VM supports it (not required for UI table)
+                    // StudentProfileId = p.Id
+                })
+                .ToListAsync();
 
-            // Schedule dropdown (MCQ only)
+            // MCQ schedules
             var items = await _db.QuizSchedules.Include(s => s.Quiz)
                 .Where(s => s.Quiz != null && s.Quiz.Type == QuizType.Mcq)
                 .OrderByDescending(s => s.StartAt)
@@ -104,187 +105,104 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 .ToListAsync();
             ViewBag.ScheduleOptions = new SelectList(items, "Id", "Title");
 
-            // Reuse Create view (now shows filter+enroll)
             return View("~/Areas/Admin/Views/Mcq/Enrollment/Create.cshtml", vm);
         }
 
-        // POST: /Admin/MCQ/Enrollment/Create  --> Enroll ALL filtered into selected schedule
+        // POST: /Admin/MCQ/Enrollment/Create  (Enroll ALL filtered)
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Guid scheduleId, StudentEnrolledBrowseVm vm)
         {
-            var schedule = await _db.QuizSchedules.Include(s => s.Quiz)
+            var schedule = await _db.QuizSchedules
+                .Include(s => s.Quiz)
                 .FirstOrDefaultAsync(s => s.Id == scheduleId && s.Quiz != null && s.Quiz.Type == QuizType.Mcq);
 
             if (schedule == null)
             {
                 TempData["Err"] = "Please select a valid MCQ schedule.";
-                return RedirectToAction(nameof(Create), vm);
+                return RedirectToRoute("AdminMcqEnrollmentCreate", vm);
             }
 
-            // Build filtered cohort again (without paging!)
+            // 1) Build the FILTER (profiles only; no Identity dependency)
             var q = _db.StudentProfiles.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(p => p.College == vm.College);
-            if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(p => p.Department == vm.Department);
+            if (!string.IsNullOrWhiteSpace(vm.College))
+                q = q.Where(p => p.College == vm.College);
+            if (!string.IsNullOrWhiteSpace(vm.Department))
+                q = q.Where(p => p.Department == vm.Department);
             if (!string.IsNullOrWhiteSpace(vm.Search))
             {
                 var s = vm.Search.Trim().ToLower();
                 q = q.Where(p =>
                     (p.Name != null && p.Name.ToLower().Contains(s)) ||
-                    (p.RollNumber != null && p.RollNumber.ToLower().Contains(s)));
+                    (p.RollNumber != null && p.RollNumber.ToLower().Contains(s)) ||
+                    (p.Email != null && p.Email.ToLower().Contains(s)));
             }
 
-            var userIds = await q.Select(p => p.UserId).ToListAsync();
+            // 2) Distinct profile ids to guard against dupes from the query
+            var profileIds = (await q.Select(p => p.Id).ToListAsync()).Distinct().ToList();
 
-            int created = 0, skipped = 0;
-            foreach (var uid in userIds)
+            // 3) Preload existing enrollments for this quiz (idempotent server-side)
+            var existingSet = (await _db.Enrollments
+                .Where(e => e.QuizId == schedule.QuizId)
+                .Select(e => e.StudentProfileId)
+                .ToListAsync())
+                .ToHashSet();
+
+            // 4) Prepare new rows only for not-yet-enrolled profiles
+            var toInsert = new List<Enrollment>(capacity: profileIds.Count);
+            foreach (var pid in profileIds)
             {
-                bool exists = await _db.Enrollments.AnyAsync(e => e.QuizId == schedule.QuizId && e.UserId == uid);
-                if (exists) { skipped++; continue; }
+                if (pid == Guid.Empty || existingSet.Contains(pid)) continue;
 
-                _db.Enrollments.Add(new Enrollment
+                toInsert.Add(new Enrollment
                 {
                     QuizId = schedule.QuizId,
-                    UserId = uid,
+                    StudentProfileId = pid,
                     CreatedAt = DateTimeOffset.UtcNow
                 });
-                created++;
+                existingSet.Add(pid); // keep set updated in-memory to prevent duplicates in this batch
             }
 
-            await _db.SaveChangesAsync();
-            TempData["Ok"] = $"Enrolled: {created}, Already enrolled: {skipped}.";
-            // Force the MCQ route explicitly so we don't lose the "MCQ" segment
-            var college = Uri.EscapeDataString(vm.College ?? "");
-            var department = Uri.EscapeDataString(vm.Department ?? "");
-            var search = Uri.EscapeDataString(vm.Search ?? "");
-            return Redirect($"/Admin/MCQ/Enrollment/Create?College={college}&Department={department}&Search={search}&Page={vm.Page}&PageSize={vm.PageSize}");
+            // 5) Insert in one shot; handle race with unique index gracefully
+            int created = 0, skipped = profileIds.Count - toInsert.Count;
+            if (toInsert.Count > 0)
+            {
+                _db.Enrollments.AddRange(toInsert);
+                try
+                {
+                    created = await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // In case a concurrent request inserted some rows, re-check how many exist now
+                    var nowExisting = await _db.Enrollments
+                        .Where(e => e.QuizId == schedule.QuizId && profileIds.Contains(e.StudentProfileId))
+                        .CountAsync();
+                    created = Math.Max(0, nowExisting - (profileIds.Count - toInsert.Count));
+                    skipped = profileIds.Count - created;
+                }
+            }
+
+            TempData["Ok"] = $"Enrolled: {created}, Already enrolled (same profile): {skipped}.";
+            return RedirectToRoute("AdminMcqEnrollmentCreate", vm);
         }
 
 
-        // POST: /Admin/MCQ/Enrollment/Delete/{id}
+        // ----------------- DELETE (single) -----------------
+
         [HttpPost("Delete/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var e = await _db.Enrollments.FindAsync(id);
+            var e = await _db.Enrollments.Include(x => x.Quiz)
+                .FirstOrDefaultAsync(x => x.Id == id && x.Quiz != null && x.Quiz.Type == QuizType.Mcq);
             if (e != null)
             {
                 _db.Enrollments.Remove(e);
                 await _db.SaveChangesAsync();
+                TempData["Ok"] = "Enrollment deleted.";
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToRoute("AdminMcqEnrollmentIndex");
         }
-
-        [HttpGet("FilterEnroll")]
-        public async Task<IActionResult> FilterEnroll([FromQuery] StudentEnrolledBrowseVm vm)
-        {
-            // Dropdowns
-            var colleges = await _db.StudentProfiles
-                .Select(p => p.College).Distinct().OrderBy(s => s).ToListAsync();
-            vm.CollegeOptions = new SelectList(colleges);
-
-            var deptQ = _db.StudentProfiles.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(vm.College))
-                deptQ = deptQ.Where(p => p.College == vm.College);
-            var depts = await deptQ.Select(p => p.Department).Distinct().OrderBy(s => s).ToListAsync();
-            vm.DepartmentOptions = new SelectList(depts);
-
-            // Filtered rows
-            var q = _db.StudentProfiles.Join(_db.Users, p => p.UserId, u => u.Id, (p, u) => new { p, u }).AsQueryable();
-            if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(x => x.p.College == vm.College);
-            if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(x => x.p.Department == vm.Department);
-            if (!string.IsNullOrWhiteSpace(vm.Search))
-            {
-                var s = vm.Search.Trim().ToLower();
-                q = q.Where(x =>
-                    (x.p.Name != null && x.p.Name.ToLower().Contains(s)) ||
-                    (x.p.RollNumber != null && x.p.RollNumber.ToLower().Contains(s)) ||
-                    (x.u.Email != null && x.u.Email.ToLower().Contains(s)));
-            }
-
-            vm.Total = await q.CountAsync();
-            var skip = (vm.Page - 1) * vm.PageSize;
-
-            vm.Rows = await q.OrderBy(x => x.p.College).ThenBy(x => x.p.Department).ThenBy(x => x.p.RollNumber)
-                .Skip(skip).Take(vm.PageSize)
-                .Select(x => new StudentEnrolledBrowseVm.Row
-                {
-                    UserId = x.p.UserId,
-                    College = x.p.College,
-                    Department = x.p.Department,
-                    RollNumber = x.p.RollNumber,
-                    Name = x.p.Name,
-                    Email = x.u.Email ?? "",
-                    CreatedAt = x.p.CreatedAt
-                }).ToListAsync();
-
-            // Schedules dropdown (MCQ only)
-            var items = await _db.QuizSchedules.Include(s => s.Quiz)
-                .Where(s => s.Quiz != null && s.Quiz.Type == QuizType.Mcq)
-                .OrderByDescending(s => s.StartAt)
-                .Select(s => new { s.Id, Title = s.Quiz!.Title + " — " + s.StartAt.ToString("g") + " to " + s.EndAt.ToString("g") })
-                .ToListAsync();
-
-            ViewBag.ScheduleOptions = new SelectList(items, "Id", "Title");
-            return View("~/Areas/Admin/Views/Mcq/Enrollment/FilterEnroll.cshtml", vm);
-        }
-
-        // ---------- POST: Enroll filtered (MCQ) ----------
-        [HttpPost("FilterEnroll")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> FilterEnroll(Guid scheduleId, StudentEnrolledBrowseVm vm)
-        {
-            var schedule = await _db.QuizSchedules.Include(s => s.Quiz)
-                .FirstOrDefaultAsync(s => s.Id == scheduleId && s.Quiz != null && s.Quiz.Type == QuizType.Mcq);
-
-            if (schedule == null)
-            {
-                TempData["Err"] = "Select a valid MCQ schedule.";
-                return RedirectToAction(nameof(FilterEnroll), vm);
-            }
-
-            // Reapply filter
-            var q = _db.StudentProfiles.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(p => p.College == vm.College);
-            if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(p => p.Department == vm.Department);
-            if (!string.IsNullOrWhiteSpace(vm.Search))
-            {
-                var s = vm.Search.Trim().ToLower();
-                q = q.Where(p => (p.Name != null && p.Name.ToLower().Contains(s))
-                              || (p.RollNumber != null && p.RollNumber.ToLower().Contains(s)));
-            }
-
-            var userIds = await q.Select(p => p.UserId).ToListAsync();
-            int created = 0, skipped = 0;
-
-            foreach (var uid in userIds)
-            {
-                bool exists = await _db.Enrollments.AnyAsync(e => e.QuizId == schedule.QuizId && e.UserId == uid);
-                if (exists) { skipped++; continue; }
-
-                _db.Enrollments.Add(new Enrollment
-                {
-                    QuizId = schedule.QuizId,
-                    UserId = uid,
-                    CreatedAt = DateTimeOffset.UtcNow
-                });
-                created++;
-            }
-
-            await _db.SaveChangesAsync();
-            TempData["Ok"] = $"Enrolled: {created}, Skipped existing: {skipped}.";
-            return RedirectToAction(nameof(FilterEnroll), vm);
-        }
-        private async Task PopulateQuizzes()
-        {
-            var list = await _db.Quizzes
-                .Where(q => q.Type == QuizType.Mcq)   // NEW filter
-                .OrderBy(q => q.Title)
-                .Select(q => new { q.Id, q.Title })
-                .ToListAsync();
-
-            ViewBag.QuizOptions = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(list, "Id", "Title");
-        }
-
     }
 }
