@@ -13,7 +13,7 @@ using Quiz_Application_College.Services.Coding;
 namespace Quiz_Application_College.Areas.Student.Controllers
 {
     [Area("Student")]
-    [Authorize(Roles = "Student")]
+    [Authorize]
     public class ExamController : Controller
     {
         private readonly ApplicationDbContext _db;

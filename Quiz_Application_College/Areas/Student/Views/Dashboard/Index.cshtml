@@ -1,68 +1,47 @@
 ﻿@model IEnumerable<Quiz_Application_College.Services.Student.AvailableQuizItem>
 @{
-    ViewData["Title"] = "My Quizzes";
-}
-<h2>Available Quizzes</h2>
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    ViewData["Title"] = "Available Quizzes";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // change if your layout path is different
 }
 
-@if (ViewBag.Exhausted != null && ((IEnumerable<dynamic>)ViewBag.Exhausted).Any())
-{
-    <div class="alert alert-info">
-        Some quizzes are open but hidden here because you’ve used all attempts:
-        <ul class="mb-0">
-            @foreach (var it in (IEnumerable<dynamic>)ViewBag.Exhausted)
-            {
-                <li>@it.Title (Max @it.MaxAttempts attempts reached)</li>
-            }
-        </ul>
-    </div>
-}
+<h2 class="mb-3">@ViewData["Title"]</h2>
 
 @if (Model == null || !Model.Any())
 {
-    <div class="alert alert-info">No quizzes are available right now. Please check later.</div>
+    <div class="alert alert-info">
+        No quizzes are available right now. Please check later.
+        <div class="small text-muted mt-1">
+            This list is based on your <b>StudentProfile</b> enrollments and active schedules.
+        </div>
+    </div>
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Quiz</th>
-                <th>Opens</th>
-                <th>Closes</th>
-                <th>Duration</th>
-                <th>Attempts</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var x in Model)
-            {
-                <tr>
-                    <td>@x.Title</td>
-                    <td>@x.StartAt.LocalDateTime</td>
-                    <td>@x.EndAt.LocalDateTime</td>
-                    <td>@x.DurationMinutes min</td>
-                    <td>@x.UsedAttempts / @x.MaxAttempts</td>
-                    <td>
-                        @if (x.RemainingAttempts > 0)
-                        {
-                            <a class="btn btn-sm btn-success"
-                               href="@Url.Action("Start", "Exam", new { area = "Student", quizId = x.QuizId })">
-                                Start
-                            </a>
-                        }
-                        else
-                        {
-                            <span class="text-danger">Attempt limit reached</span>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="row g-3">
+        @foreach (var x in Model)
+        {
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title mb-1">@x.Title</h5>
+                            <div class="text-muted small">
+                                @x.StartAt — @x.EndAt<br />
+                                Attempts: @x.UsedAttempts / @x.MaxAttempts · Duration: @x.DurationMinutes min
+                            </div>
+                        </div>
+
+                        <a class="btn btn-primary"
+                           asp-area="Student"
+                           asp-controller="Exam"
+                           asp-action="Start"
+                           asp-route-quizId="@x.QuizId"
+                           asp-route-scheduleId="@x.ScheduleId">
+                            Start
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }

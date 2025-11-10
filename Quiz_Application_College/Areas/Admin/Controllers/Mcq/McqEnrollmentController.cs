@@ -17,31 +17,78 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         private readonly ApplicationDbContext _db;
         public McqEnrollmentController(ApplicationDbContext db) => _db = db;
 
-        // ----------------- LIST -----------------
+        // ----------------- LIST (SUMMARY) -----------------
 
         // GET: /Admin/MCQ/Enrollment  and /Admin/MCQ/Enrollment/Index
         [HttpGet("", Name = "AdminMcqEnrollmentIndex")]
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            var rows = await _db.Enrollments
-                .Include(e => e.Quiz)
-                .Include(e => e.StudentProfile)
+            var data = await _db.Enrollments
                 .Where(e => e.Quiz != null && e.Quiz.Type == QuizType.Mcq)
-                .OrderByDescending(e => e.CreatedAt)
                 .Select(e => new
                 {
-                    e.Id,
                     e.QuizId,
-                    QuizTitle = e.Quiz!.Title,
-                    Roll = e.StudentProfile!.RollNumber,
-                    Name = e.StudentProfile!.Name,
-                    Email = e.StudentProfile!.Email,
-                    e.CreatedAt
+                    QuizTitle = e.Quiz.Title,
+                    College = e.StudentProfile != null ? e.StudentProfile.College : null,
+                    Department = e.StudentProfile != null ? e.StudentProfile.Department : null
                 })
+                .GroupBy(x => new
+                {
+                    x.QuizId,
+                    x.QuizTitle,
+                    College = x.College ?? "(Unknown)",
+                    Department = x.Department ?? "(Unknown)"
+                })
+                .Select(g => new EnrollmentSummaryVm
+                {
+                    QuizId = g.Key.QuizId,
+                    QuizTitle = g.Key.QuizTitle,
+                    College = g.Key.College,
+                    Department = g.Key.Department,
+                    TotalStudents = g.Count()
+                })
+                .OrderBy(x => x.QuizTitle)
+                .ThenBy(x => x.College)
+                .ThenBy(x => x.Department)
                 .ToListAsync();
 
-            return View("~/Areas/Admin/Views/Mcq/Enrollment/Index.cshtml", rows);
+            return View("~/Areas/Admin/Views/Mcq/Enrollment/Index.cshtml", data);
+        }
+
+        // POST: /Admin/MCQ/Enrollment/DeleteGroup
+        [HttpPost("DeleteGroup")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteGroup(Guid quizId, string college, string department)
+        {
+            college = string.IsNullOrWhiteSpace(college) ? null : college;
+            department = string.IsNullOrWhiteSpace(department) ? null : department;
+
+            var q = _db.Enrollments.Where(e => e.QuizId == quizId);
+
+            if (college == "(Unknown)")
+                q = q.Where(e => e.StudentProfile == null || e.StudentProfile.College == null);
+            else
+                q = q.Where(e => e.StudentProfile != null && e.StudentProfile.College == college);
+
+            if (department == "(Unknown)")
+                q = q.Where(e => e.StudentProfile == null || e.StudentProfile.Department == null);
+            else
+                q = q.Where(e => e.StudentProfile != null && e.StudentProfile.Department == department);
+
+            var toDelete = await q.ToListAsync();
+            if (toDelete.Count > 0)
+            {
+                _db.Enrollments.RemoveRange(toDelete);
+                await _db.SaveChangesAsync();
+                TempData["Ok"] = $"Deleted {toDelete.Count} enrollment(s).";
+            }
+            else
+            {
+                TempData["Info"] = "No enrollments found for the selected group.";
+            }
+
+            return RedirectToRoute("AdminMcqEnrollmentIndex");
         }
 
         // ----------------- CREATE (filter + bulk enroll) -----------------
@@ -50,7 +97,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         [HttpGet("Create", Name = "AdminMcqEnrollmentCreate")]
         public async Task<IActionResult> Create([FromQuery] StudentEnrolledBrowseVm vm)
         {
-            // Dropdowns
             var colleges = await _db.StudentProfiles
                 .Select(p => p.College).Distinct().OrderBy(s => s).ToListAsync();
             vm.CollegeOptions = new SelectList(colleges);
@@ -61,7 +107,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             var depts = await deptQ.Select(p => p.Department).Distinct().OrderBy(s => s).ToListAsync();
             vm.DepartmentOptions = new SelectList(depts);
 
-            // Filtered PROFILES (no Identity join)
             var q = _db.StudentProfiles.AsQueryable();
             if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(p => p.College == vm.College);
             if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(p => p.Department == vm.Department);
@@ -82,19 +127,15 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 .Skip(skip).Take(vm.PageSize)
                 .Select(p => new StudentEnrolledBrowseVm.Row
                 {
-                    // We don’t need UserId anymore
                     College = p.College,
                     Department = p.Department,
                     RollNumber = p.RollNumber,
                     Name = p.Name,
                     Email = p.Email ?? "",
                     CreatedAt = p.CreatedAt,
-                    // Keep an internal id if your VM supports it (not required for UI table)
-                    // StudentProfileId = p.Id
                 })
                 .ToListAsync();
 
-            // MCQ schedules
             var items = await _db.QuizSchedules.Include(s => s.Quiz)
                 .Where(s => s.Quiz != null && s.Quiz.Type == QuizType.Mcq)
                 .OrderByDescending(s => s.StartAt)
@@ -108,7 +149,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             return View("~/Areas/Admin/Views/Mcq/Enrollment/Create.cshtml", vm);
         }
 
-        // POST: /Admin/MCQ/Enrollment/Create  (Enroll ALL filtered)
+        // POST: /Admin/MCQ/Enrollment/Create
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Guid scheduleId, StudentEnrolledBrowseVm vm)
@@ -123,12 +164,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 return RedirectToRoute("AdminMcqEnrollmentCreate", vm);
             }
 
-            // 1) Build the FILTER (profiles only; no Identity dependency)
             var q = _db.StudentProfiles.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(vm.College))
-                q = q.Where(p => p.College == vm.College);
-            if (!string.IsNullOrWhiteSpace(vm.Department))
-                q = q.Where(p => p.Department == vm.Department);
+            if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(p => p.College == vm.College);
+            if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(p => p.Department == vm.Department);
             if (!string.IsNullOrWhiteSpace(vm.Search))
             {
                 var s = vm.Search.Trim().ToLower();
@@ -138,17 +176,14 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                     (p.Email != null && p.Email.ToLower().Contains(s)));
             }
 
-            // 2) Distinct profile ids to guard against dupes from the query
             var profileIds = (await q.Select(p => p.Id).ToListAsync()).Distinct().ToList();
 
-            // 3) Preload existing enrollments for this quiz (idempotent server-side)
             var existingSet = (await _db.Enrollments
                 .Where(e => e.QuizId == schedule.QuizId)
                 .Select(e => e.StudentProfileId)
                 .ToListAsync())
                 .ToHashSet();
 
-            // 4) Prepare new rows only for not-yet-enrolled profiles
             var toInsert = new List<Enrollment>(capacity: profileIds.Count);
             foreach (var pid in profileIds)
             {
@@ -160,10 +195,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                     StudentProfileId = pid,
                     CreatedAt = DateTimeOffset.UtcNow
                 });
-                existingSet.Add(pid); // keep set updated in-memory to prevent duplicates in this batch
+                existingSet.Add(pid);
             }
 
-            // 5) Insert in one shot; handle race with unique index gracefully
             int created = 0, skipped = profileIds.Count - toInsert.Count;
             if (toInsert.Count > 0)
             {
@@ -174,7 +208,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 }
                 catch (DbUpdateException)
                 {
-                    // In case a concurrent request inserted some rows, re-check how many exist now
                     var nowExisting = await _db.Enrollments
                         .Where(e => e.QuizId == schedule.QuizId && profileIds.Contains(e.StudentProfileId))
                         .CountAsync();
@@ -186,7 +219,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             TempData["Ok"] = $"Enrolled: {created}, Already enrolled (same profile): {skipped}.";
             return RedirectToRoute("AdminMcqEnrollmentCreate", vm);
         }
-
 
         // ----------------- DELETE (single) -----------------
 

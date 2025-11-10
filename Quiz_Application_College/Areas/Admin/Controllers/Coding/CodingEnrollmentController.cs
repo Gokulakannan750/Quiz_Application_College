@@ -13,12 +13,11 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
     [Authorize(Policy = "IsAdmin")]
     // All actions live under /Admin/Coding/Enrollment/...
     [Route("Admin/Coding/Enrollment")]
-    public class EnrollmentController : Controller
+    public class CodingEnrollmentController : Controller
     {
         private readonly ApplicationDbContext _db;
-        public EnrollmentController(ApplicationDbContext db) => _db = db;
+        public CodingEnrollmentController(ApplicationDbContext db) => _db = db;
 
-        // ---- Helpers ----
         private static string? Normalize(string? v)
         {
             if (string.IsNullOrWhiteSpace(v)) return null;
@@ -39,30 +38,78 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             ViewBag.QuizOptions = new SelectList(list, "Id", "Title");
         }
 
-        // ------------------ INDEX (list enrollments) ------------------
+        // ------------------ INDEX (SUMMARY LIST) ------------------
 
         // GET: /Admin/Coding/Enrollment  OR /Admin/Coding/Enrollment/Index
         [HttpGet("", Name = "AdminCodingEnrollmentIndex")]
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            var rows = await _db.Enrollments
-                .Include(e => e.Quiz)
+            var data = await _db.Enrollments
                 .Where(e => e.Quiz != null && e.Quiz.Type == QuizType.Coding)
-                .Select(e => new EnrollmentRowVm
+                .Select(e => new
                 {
-                    Id = e.Id,
-                    QuizId = e.QuizId,
-                    QuizTitle = e.Quiz!.Title,
-                    UserId = e.UserId,
-                    Email = _db.Users.Where(u => u.Id == e.UserId).Select(u => u.Email).FirstOrDefault(),
-                    Status = e.Status,
-                    CreatedAt = e.CreatedAt
+                    e.QuizId,
+                    QuizTitle = e.Quiz.Title,
+                    College = e.StudentProfile != null ? e.StudentProfile.College : null,
+                    Department = e.StudentProfile != null ? e.StudentProfile.Department : null
                 })
-                .OrderByDescending(x => x.CreatedAt)
+                .GroupBy(x => new
+                {
+                    x.QuizId,
+                    x.QuizTitle,
+                    College = x.College ?? "(Unknown)",
+                    Department = x.Department ?? "(Unknown)"
+                })
+                .Select(g => new EnrollmentSummaryVm
+                {
+                    QuizId = g.Key.QuizId,
+                    QuizTitle = g.Key.QuizTitle,
+                    College = g.Key.College,
+                    Department = g.Key.Department,
+                    TotalStudents = g.Count()
+                })
+                .OrderBy(x => x.QuizTitle)
+                .ThenBy(x => x.College)
+                .ThenBy(x => x.Department)
                 .ToListAsync();
 
-            return View("~/Areas/Admin/Views/Coding/Enrollment/Index.cshtml", rows);
+            return View("~/Areas/Admin/Views/Coding/Enrollment/Index.cshtml", data);
+        }
+
+        // POST: /Admin/Coding/Enrollment/DeleteGroup
+        [HttpPost("DeleteGroup")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteGroup(Guid quizId, string college, string department)
+        {
+            college = string.IsNullOrWhiteSpace(college) ? null : college;
+            department = string.IsNullOrWhiteSpace(department) ? null : department;
+
+            var q = _db.Enrollments.Where(e => e.QuizId == quizId);
+
+            if (college == "(Unknown)")
+                q = q.Where(e => e.StudentProfile == null || e.StudentProfile.College == null);
+            else
+                q = q.Where(e => e.StudentProfile != null && e.StudentProfile.College == college);
+
+            if (department == "(Unknown)")
+                q = q.Where(e => e.StudentProfile == null || e.StudentProfile.Department == null);
+            else
+                q = q.Where(e => e.StudentProfile != null && e.StudentProfile.Department == department);
+
+            var toDelete = await q.ToListAsync();
+            if (toDelete.Count > 0)
+            {
+                _db.Enrollments.RemoveRange(toDelete);
+                await _db.SaveChangesAsync();
+                TempData["Ok"] = $"Deleted {toDelete.Count} enrollment(s).";
+            }
+            else
+            {
+                TempData["Info"] = "No enrollments found for the selected group.";
+            }
+
+            return RedirectToAction(nameof(Index));
         }
 
         // ------------------ CREATE (filter + bulk enroll) ------------------
@@ -84,7 +131,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             var depts = await deptQ.Select(p => p.Department).Distinct().OrderBy(s => s).ToListAsync();
             vm.DepartmentOptions = new SelectList(depts);
 
-            // LEFT JOIN users so profiles without users still show (email may be shown as blank)
             var q = (from p in _db.StudentProfiles
                      join u in _db.Users on p.UserId equals u.Id into gj
                      from u in gj.DefaultIfEmpty()
@@ -149,7 +195,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                 return RedirectToRoute("AdminCodingEnrollmentCreate", vm);
             }
 
-            // Filter PROFILES only (no Identity join)
             var q = _db.StudentProfiles.AsQueryable();
             if (!string.IsNullOrWhiteSpace(vm.College)) q = q.Where(p => p.College == vm.College);
             if (!string.IsNullOrWhiteSpace(vm.Department)) q = q.Where(p => p.Department == vm.Department);
@@ -162,25 +207,46 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                     (p.Email != null && p.Email.ToLower().Contains(s)));
             }
 
-            var profileIds = await q.Select(p => p.Id).ToListAsync();
-            int created = 0, skipped = 0;
+            var profileIds = (await q.Select(p => p.Id).ToListAsync()).Distinct().ToList();
 
+            var existingSet = (await _db.Enrollments
+                .Where(e => e.QuizId == schedule.QuizId)
+                .Select(e => e.StudentProfileId)
+                .ToListAsync())
+                .ToHashSet();
+
+            var toInsert = new List<Enrollment>(capacity: profileIds.Count);
             foreach (var pid in profileIds)
             {
-                bool exists = await _db.Enrollments.AnyAsync(e => e.QuizId == schedule.QuizId && e.StudentProfileId == pid);
-                if (exists) { skipped++; continue; }
+                if (pid == Guid.Empty || existingSet.Contains(pid)) continue;
 
-                _db.Enrollments.Add(new Enrollment
+                toInsert.Add(new Enrollment
                 {
                     QuizId = schedule.QuizId,
                     StudentProfileId = pid,
-                    // UserId remains null by design
                     CreatedAt = DateTimeOffset.UtcNow
                 });
-                created++;
+                existingSet.Add(pid);
             }
 
-            await _db.SaveChangesAsync();
+            int created = 0, skipped = profileIds.Count - toInsert.Count;
+            if (toInsert.Count > 0)
+            {
+                _db.Enrollments.AddRange(toInsert);
+                try
+                {
+                    created = await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    var nowExisting = await _db.Enrollments
+                        .Where(e => e.QuizId == schedule.QuizId && profileIds.Contains(e.StudentProfileId))
+                        .CountAsync();
+                    created = Math.Max(0, nowExisting - (profileIds.Count - toInsert.Count));
+                    skipped = profileIds.Count - created;
+                }
+            }
+
             TempData["Ok"] = $"Enrolled: {created}, Already enrolled (same profile): {skipped}.";
             return RedirectToRoute("AdminCodingEnrollmentCreate", vm);
         }
@@ -262,7 +328,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             await _db.SaveChangesAsync();
 
             TempData["Ok"] = "Enrollment updated.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToRoute("AdminCodingEnrollmentIndex");
         }
 
         [HttpPost("Delete/{id:guid}")]
@@ -277,7 +343,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                 await _db.SaveChangesAsync();
                 TempData["Ok"] = "Enrollment deleted.";
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToRoute("AdminCodingEnrollmentIndex");
         }
     }
 }

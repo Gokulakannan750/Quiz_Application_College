@@ -1,59 +1,70 @@
-﻿@model IEnumerable<Quiz_Application_College.ViewModels.Coding.EnrollmentRowVm>
-@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+﻿@model IEnumerable<Quiz_Application_College.ViewModels.EnrollmentSummaryVm>
 @{
-    ViewData["Title"] = "Coding — Enrollments";
-}
-<div class="d-flex align-items-center mb-3">
-    <h2 class="mb-0">Coding — Enrollments</h2>
-    <a asp-route="AdminCodingEnrollmentCreate" class="btn btn-primary ms-auto">Enroll Students</a>
-</div>
-
-@if (TempData["Ok"] is string ok)
-{
-    <div class="alert alert-success">@ok</div>
-}
-@if (TempData["Err"] is string err)
-{
-    <div class="alert alert-danger">@err</div>
+    ViewData["Title"] = "Coding — Enrollments (Summary)";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // adjust if needed
 }
 
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-striped align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Quiz</th>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Created</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model != null && Model.Any())
-                {
-                    foreach (var e in Model)
-                    {
-                        <tr>
-                            <td>@e.QuizTitle</td>
-                            <td>@e.UserId</td>
-                            <td>@e.Email</td>
-                            <td>@e.CreatedAt.ToLocalTime().ToString("g")</td>
-                            <td class="text-end">
-                                <a asp-area="Admin" asp-controller="Enrollment" asp-action="Edit" asp-route-id="@e.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                <form asp-area="Admin" asp-controller="Enrollment" asp-action="Delete" asp-route-id="@e.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this enrollment?')">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                }
-                else
-                {
-                    <tr><td colspan="5" class="text-center text-muted">No enrollments found.</td></tr>
-                }
-            </tbody>
-        </table>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0">@ViewData["Title"]</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary" asp-area="Admin" asp-controller="CodingEnrollment" asp-action="Create">Enroll Students</a>
+            <a class="btn btn-outline-secondary" href="/Admin/Coding">Back to Coding Dashboard</a>
+        </div>
     </div>
 </div>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">@TempData["Ok"]</div>
+}
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info">@TempData["Info"]</div>
+}
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Quiz</th>
+            <th>College</th>
+            <th>Department</th>
+            <th class="text-end">Total Students</th>
+            <th class="text-end">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Any())
+        {
+            <tr><td colspan="5" class="text-center text-muted">No enrollments found.</td></tr>
+        }
+        else
+        {
+            foreach (var row in Model)
+            {
+                <tr>
+                    <td>@row.QuizTitle</td>
+                    <td>@row.College</td>
+                    <td>@row.Department</td>
+                    <td class="text-end">@row.TotalStudents</td>
+                    <td class="text-end">
+                        <form asp-area="Admin"
+                              asp-controller="CodingEnrollment"
+                              asp-action="DeleteGroup"
+                              method="post"
+                              class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="quizId" value="@row.QuizId" />
+                            <input type="hidden" name="college" value="@row.College" />
+                            <input type="hidden" name="department" value="@row.Department" />
+                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                    onclick="return confirm('Delete all @row.TotalStudents enrollment(s) for this group?');">
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
