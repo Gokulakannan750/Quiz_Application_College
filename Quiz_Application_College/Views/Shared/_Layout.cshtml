@@ -1,91 +1,173 @@
-﻿@using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+﻿@using System.Security.Claims
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"] - Quiz_Application_College</title>
-    <script>
-        // Apply saved theme before paint
-        (function(){ if(localStorage.getItem('tls-theme')==='dark')
-          document.documentElement.classList.add('theme-dark');})();
-    </script>
+    <title>@ViewData["Title"] - TLS Quiz</title>
+
+    <!-- Bootstrap (5.x) -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+    <!-- Site CSS (must contain the .theme-dark rules) -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-tls">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
-                <img src="~/img/logo.png" alt="TLS" width="32" height="32" class="me-2" />
-                <span class="fw-semibold">TLS Quiz</span>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div id="mainNav" class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto">
-                    @if (SignInManager.IsSignedIn(User))
-                    {
-                        if (User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="Admin" asp-controller="Home" asp-action="Index">Home</a>
-                            </li>
-                        }
-                        else if (User.IsInRole("Student"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="Student" asp-controller="Home" asp-action="Index">Home</a>
-                            </li>
-                        }
-                    }
-                    else
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                    }
-                    <a class="btn btn-outline-primary" href="/Student/Account/Login">Student Login</a>
 
-                </ul>
-
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item me-2">
-                        <button id="themeToggle" class="btn btn-sm btn-outline-light" type="button" title="Toggle theme">
-                            <span class="theme-light-only">🌙</span><span class="theme-dark-only d-none">☀️</span>
-                        </button>
-                    </li>
-                    <partial name="_LoginPartial" />
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container py-4">
-        <main role="main">@RenderBody()</main>
-    </div>
-
-    <footer class="border-top text-center py-3 small">
-        <img src="~/img/logo.png" width="18" height="18" class="me-1" />
-        <span class="text-cherry">Beyond Today</span> · © @DateTime.Now.Year
-    </footer>
-
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Apply saved theme BEFORE paint (matches CSS: html.theme-dark {...}) -->
     <script>
-        // dark mode toggle
-        (function(){
-          const btn=document.getElementById('themeToggle'), root=document.documentElement;
-          function sync(){ const d=root.classList.contains('theme-dark');
-            document.querySelector('.theme-light-only')?.classList.toggle('d-none', d);
-            document.querySelector('.theme-dark-only')?.classList.toggle('d-none', !d);}
-          btn?.addEventListener('click',()=>{root.classList.toggle('theme-dark');
-            localStorage.setItem('tls-theme',root.classList.contains('theme-dark')?'dark':'light'); sync();});
-          sync();
+        (function () {
+          try {
+            var saved = localStorage.getItem('tls-theme'); // 'dark' | 'light' | null
+            if (!saved) {
+              // fall back to system preference
+              saved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                ? 'dark' : 'light';
+            }
+            if (saved === 'dark') document.documentElement.classList.add('theme-dark');
+            else document.documentElement.classList.remove('theme-dark');
+          } catch (e) { /* ignore */ }
         })();
     </script>
+</head>
+<body>
+    @{
+        bool isStudent = User?.Identities?.Any(i => i.IsAuthenticated && i.AuthenticationType == "StudentCookie") ?? false;
+        bool isAdmin =
+        (User?.IsInRole("Admin") ?? false) ||
+        (User?.IsInRole("Faculty") ?? false) ||
+        (User?.IsInRole("Examiner") ?? false) ||
+        (User?.IsInRole("Moderator") ?? false);
+
+        string studentName = User?.FindFirst(ClaimTypes.Name)?.Value ?? "Student";
+        string adminName = User?.Identity?.Name ?? "Admin";
+    }
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-tls">
+            <div class="container">
+                <!-- TLS logo -> Home (login tiles) -->
+                <a class="navbar-brand d-flex align-items-center"
+                   asp-area="" asp-controller="Home" asp-action="Index" title="TLS Home">
+                    <!-- Change .svg to .png if your asset is PNG -->
+                    <img src="~/img/Logo.png" alt="TLS" width="28" height="28" class="me-2" />
+                    <span>TLS Quiz</span>
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav me-auto">
+                        @* Student menus when Student cookie is active *@
+                        @if (isStudent && !isAdmin)
+                        {
+                            <li class="nav-item"><a class="nav-link" href="/Student">Student Dashboard</a></li>
+                        }
+
+                        @* Admin menus when Identity is active *@
+                        @if (isAdmin && !isStudent)
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-area="Admin" asp-controller="Home" asp-action="Index">Admin Dashboard</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-area="Admin" asp-controller="Reports" asp-action="Index">Reports</a></li>
+                        }
+                    </ul>
+
+                    <ul class="navbar-nav ms-auto align-items-center">
+                        <!-- THEME TOGGLE (kept minimal; works with CSS expecting html.theme-dark) -->
+                        <li class="nav-item me-2">
+                            <button id="themeToggle"
+                                    type="button"
+                                    class="btn btn-outline-warning btn-sm"
+                                    title="Toggle theme"
+                                    aria-label="Toggle theme">
+                                <span id="icon-sun" class="d-none" aria-hidden="true">☀️</span>
+                                <span id="icon-moon" aria-hidden="true">🌙</span>
+                            </button>
+                        </li>
+
+                        @* Right-side auth *@
+                        @if (isStudent && !isAdmin)
+                        {
+                            <li class="nav-item">
+                                <span class="navbar-text me-2">Hello, @studentName</span>
+                            </li>
+                            <li class="nav-item">
+                                <form method="post" asp-area="Student" asp-controller="Auth" asp-action="Logout" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-outline-light btn-sm" type="submit">Logout</button>
+                                </form>
+                            </li>
+                        }
+                        else if (isAdmin && !isStudent)
+                        {
+                            <li class="nav-item">
+                                <span class="navbar-text me-2">Hello, @adminName</span>
+                            </li>
+                            <li class="nav-item">
+                                <!-- Identity logout (Razor Page POST) -->
+                                <form method="post"
+                                      asp-area="Identity"
+                                      asp-page="/Account/Logout"
+                                      asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })"
+                                      class="d-inline">
+                                    <button class="btn btn-outline-light btn-sm" type="submit">Logout</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-outline-info btn-sm me-2"
+                                   asp-area="Student" asp-controller="Auth" asp-action="Login">Student Login</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="btn btn-outline-light btn-sm"
+                                   asp-area="Identity" asp-page="/Account/Login">Admin Login</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main role="main" class="container my-4">
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Toggle script (adapts ONLY around your CSS: adds/removes 'theme-dark' on <html>) -->
+    <script>
+        (function () {
+          const KEY = 'tls-theme';
+
+          function apply(theme) {
+            // toggle class on <html>
+            if (theme === 'dark') document.documentElement.classList.add('theme-dark');
+            else document.documentElement.classList.remove('theme-dark');
+
+            // flip icons: show sun in dark (to go light), moon in light
+            const sun  = document.getElementById('icon-sun');
+            const moon = document.getElementById('icon-moon');
+            if (sun && moon) {
+              sun.classList.toggle('d-none', theme !== 'dark');
+              moon.classList.toggle('d-none', theme === 'dark');
+            }
+          }
+
+          // Initialize icon to current state
+          apply(document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light');
+
+          // Wire the button
+          document.getElementById('themeToggle')?.addEventListener('click', function () {
+            const next = document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark';
+            apply(next);
+            try { localStorage.setItem(KEY, next); } catch (e) { /* ignore */ }
+          });
+        })();
+    </script>
+
     @RenderSection("Scripts", required: false)
 </body>
 </html>

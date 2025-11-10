@@ -19,9 +19,15 @@ namespace Quiz_Application_College.Areas.Student.Controllers
         [HttpGet("Login")]
         public IActionResult Login(string? returnUrl = null)
         {
+            // If already authenticated with the Student cookie, skip the form
+            var isStudent = User?.Identities?.Any(i => i.IsAuthenticated && i.AuthenticationType == "StudentCookie") ?? false;
+            if (isStudent)
+                return RedirectToAction("Index", "Dashboard", new { area = "Student" });
+
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
+
 
         [HttpPost("Login")]
         [ValidateAntiForgeryToken]    // <-- keep token validation only on POST
