@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.ViewModels;
+using Quiz_Application_College.Utils;
 
 namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 {
@@ -51,7 +52,16 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ScheduleCreateVm vm)
         {
-            if (vm.EndAt <= vm.StartAt)
+            // Normalize timezone (accepts "Asia/Kolkata" or "India Standard Time")
+            var tz = Quiz_Application_College.Utils.TimeHelper.NormalizeTz(
+                string.IsNullOrWhiteSpace(vm.Timezone) ? TimeZoneInfo.Local.Id : vm.Timezone!
+            );
+
+            // Convert whatever the UI posted to UTC for consistent storage
+            var startUtc = vm.StartAt.ToUniversalTime();
+            var endUtc = vm.EndAt.ToUniversalTime();
+
+            if (endUtc <= startUtc)
                 ModelState.AddModelError(nameof(vm.EndAt), "End time must be after start time.");
 
             // Ensure a coding quiz is selected
@@ -62,16 +72,18 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             if (!ModelState.IsValid)
             {
                 await PopulateCodingQuizzes();
+                // Keep user-entered values, but normalize tz for the re-render
+                vm.Timezone = tz;
                 return View("~/Areas/Admin/Views/Coding/Schedule/Create.cshtml", vm);
             }
 
             var entity = new QuizSchedule
             {
                 QuizId = vm.QuizId,
-                StartAt = vm.StartAt,
-                EndAt = vm.EndAt,
-                MaxAttempts = vm.MaxAttempts,
-                Timezone = vm.Timezone
+                StartAt = startUtc,          // ✅ UTC in DB
+                EndAt = endUtc,            // ✅ UTC in DB
+                MaxAttempts = vm.MaxAttempts <= 0 ? 1 : vm.MaxAttempts,
+                Timezone = tz                 // ✅ canonical timezone stored once
             };
 
             _db.QuizSchedules.Add(entity);
