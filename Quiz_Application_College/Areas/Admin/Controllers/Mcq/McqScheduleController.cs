@@ -53,30 +53,41 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ScheduleCreateVm vm)
         {
-            if (vm.EndAt <= vm.StartAt)
+            // Normalize timezone (accepts "Asia/Kolkata" or "India Standard Time")
+            var tz = Quiz_Application_College.Utils.TimeHelper.NormalizeTz(
+                string.IsNullOrWhiteSpace(vm.Timezone) ? TimeZoneInfo.Local.Id : vm.Timezone!
+            );
+
+            // Convert posted values to UTC for consistent storage
+            var startUtc = vm.StartAt.ToUniversalTime();
+            var endUtc = vm.EndAt.ToUniversalTime();
+
+            if (endUtc <= startUtc)
                 ModelState.AddModelError(nameof(vm.EndAt), "End time must be after start time.");
 
             if (!ModelState.IsValid)
             {
                 await PopulateQuizzes();
+                vm.Timezone = tz; // re-render with normalized tz
                 return View("~/Areas/Admin/Views/Mcq/Schedule/Create.cshtml", vm);
             }
 
-            var s = new QuizSchedule
+            var sched = new QuizSchedule
             {
                 QuizId = vm.QuizId,
-                StartAt = vm.StartAt,
-                EndAt = vm.EndAt,
-                MaxAttempts = vm.MaxAttempts,
-                Timezone = vm.Timezone
+                StartAt = startUtc,          // ✅ UTC in DB
+                EndAt = endUtc,            // ✅ UTC in DB
+                MaxAttempts = vm.MaxAttempts <= 0 ? 1 : vm.MaxAttempts,
+                Timezone = tz                 // ✅ canonical timezone stored once
             };
 
-            _db.QuizSchedules.Add(s);
+            _db.QuizSchedules.Add(sched);
             await _db.SaveChangesAsync();
 
             TempData["Ok"] = "Schedule created.";
             return RedirectToAction(nameof(Index));
         }
+
 
         // POST: /Admin/MCQ/Schedule/Delete/{id}
         [HttpPost("Delete/{id:guid}")]

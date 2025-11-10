@@ -46,7 +46,6 @@ namespace Quiz_Application_College.Data
                 b.HasKey(e => e.Id);
                 b.HasOne(e => e.Quiz).WithMany().HasForeignKey(e => e.QuizId).OnDelete(DeleteBehavior.Cascade);
 
-                b.Property(e => e.UserId).IsRequired(false);
                 b.HasOne(e => e.StudentProfile).WithMany().HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Cascade);
 
                 b.HasIndex(e => new { e.QuizId, e.StudentProfileId }).IsUnique();   // << correct unique key
