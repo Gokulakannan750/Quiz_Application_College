@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http.Features;
+﻿using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
@@ -6,21 +6,21 @@ using Quiz_Application_College.Services.Coding;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Database ---
+// ---------------- DB ----------------
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
+builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.Configure<FormOptions>(o =>
-{
-    o.MultipartBodyLengthLimit = 1024L * 1024L * 100L; // 100 MB uploads
-});
+// (optional) larger uploads
+builder.Services.Configure<FormOptions>(o => { o.MultipartBodyLengthLimit = 100L * 1024 * 1024; });
 
-// Code Runner (Judge0 + fallback)
+// ---------------- Services ----------------
+builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages(); // Identity UI
+
+// Code runner DI
 builder.Services.AddHttpClient<Judge0CodeRunner>();
 builder.Services.AddScoped<ICodeRunner>(sp =>
 {
@@ -28,62 +28,64 @@ builder.Services.AddScoped<ICodeRunner>(sp =>
     return judge.IsEnabled ? judge : new NoopCodeRunner();
 });
 
-// --- Identity Cookie Settings ---
-// Keep Admin using your combined login (/Account/Login). Students will use /Student/Account/Login via links.
-builder.Services.ConfigureApplicationCookie(options =>
+// Identity (Admin)
+builder.Services
+    .AddDefaultIdentity<IdentityUser>(opt =>
+    {
+        opt.SignIn.RequireConfirmedAccount = false;
+        opt.Password.RequireDigit = false;
+        opt.Password.RequireLowercase = false;
+        opt.Password.RequireNonAlphanumeric = false;
+        opt.Password.RequireUppercase = false;
+        opt.Password.RequiredUniqueChars = 1;
+        opt.Password.RequiredLength = 4;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Admin cookie → Identity UI
+builder.Services.ConfigureApplicationCookie(opt =>
 {
-    options.LoginPath = "/Account/Login";
-    options.AccessDeniedPath = "/Account/Login";
-    options.SlidingExpiration = true;
-    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    opt.LoginPath = "/Identity/Account/Login";
+    opt.AccessDeniedPath = "/Identity/Account/AccessDenied";
+    opt.ReturnUrlParameter = "returnUrl";
+    opt.SlidingExpiration = true;
+    opt.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
 
-// --- Authorization Policies ---
+// Student cookie (custom)
+builder.Services.AddAuthentication()
+    .AddCookie("StudentCookie", opt =>
+    {
+        opt.LoginPath = "/Student/Auth/Login";
+        opt.AccessDeniedPath = "/Student/Auth/Denied";
+        opt.ReturnUrlParameter = "returnUrl";
+        opt.Cookie.Name = ".QuizApp.Student";
+        opt.SlidingExpiration = true;
+        opt.ExpireTimeSpan = TimeSpan.FromHours(8);
+    });
+
+// Authorization policies (optional)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("IsAdmin", p => p.RequireRole("Admin", "Faculty", "Examiner", "Moderator"));
 });
 
-// Add a separate cookie just for Students
-builder.Services.AddAuthentication()
-    .AddCookie("StudentCookie", options =>
-    {
-        options.LoginPath = "/Student/Account/Login";
-        options.AccessDeniedPath = "/Student/Account/Login";
-        options.Cookie.Name = "Student.Auth";
-        options.SlidingExpiration = true;
-        options.ExpireTimeSpan = TimeSpan.FromHours(8);
-    });
-
-// --- Identity (register ONCE; includes Roles) ---
-// IMPORTANT: Relax password requirements so roll numbers (e.g., 21ECE0012) are valid passwords.
-builder.Services
-    .AddDefaultIdentity<IdentityUser>(options =>
-    {
-        options.SignIn.RequireConfirmedAccount = false;
-
-        // Allow roll numbers as passwords
-        options.Password.RequireDigit = false;
-        options.Password.RequireLowercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequireUppercase = false;
-        options.Password.RequiredUniqueChars = 1;
-        options.Password.RequiredLength = 4; // set higher if your rolls are longer (e.g., 6 or 8)
-    })
-    .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
-
-// --- MVC & Services ---
-builder.Services.AddControllersWithViews();
+// App services
 builder.Services.AddScoped<Quiz_Application_College.Services.Student.AvailableQuizService>();
 builder.Services.AddScoped<Quiz_Application_College.Services.Reports.ExportService>();
 
+// Antiforgery (for student login form)
+builder.Services.AddAntiforgery(o =>
+{
+    o.Cookie.Name = ".QuizApp.AntiForgery";
+});
+
+// ---------------- Build ----------------
 var app = builder.Build();
 
-// --- Seed roles & users (runs once at startup) ---
+// Seed data
 await IdentitySeed.SeedAsync(app.Services);
-
-// --- Demo data only in Development ---
 if (app.Environment.IsDevelopment())
 {
     await DemoSeed.SeedAsync(app.Services);
@@ -100,22 +102,18 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// Authentication BEFORE Authorization
-app.UseAuthentication();
+app.UseAuthentication();  // before authorization
 app.UseAuthorization();
 
-// --- Endpoints ---
-// Areas: /Admin/... and /Student/...
+app.MapControllers();
+app.MapRazorPages();
+
 app.MapControllerRoute(
     name: "areas",
     pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
 
-// Default MVC route -> Dashboard
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
-
-// Identity UI pages
-app.MapRazorPages();
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
