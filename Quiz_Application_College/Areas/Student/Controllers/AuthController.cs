@@ -66,7 +66,8 @@ namespace Quiz_Application_College.Areas.Student.Controllers
         }
 
         [HttpPost("Logout")]
-        [ValidateAntiForgeryToken]
+        [Authorize(AuthenticationSchemes = "StudentCookie")]  
+        [ValidateAntiForgeryToken]                           
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync("StudentCookie");

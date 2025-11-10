@@ -106,12 +106,15 @@
                             <li class="nav-item">
                                 <!-- Identity logout (Razor Page POST) -->
                                 <form method="post"
-                                      asp-area="Identity"
-                                      asp-page="/Account/Logout"
-                                      asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })"
+                                      asp-area="Student"
+                                      asp-controller="Auth"
+                                      asp-action="Logout"
+                                      asp-antiforgery="true"
                                       class="d-inline">
+                                    @Html.AntiForgeryToken()
                                     <button class="btn btn-outline-light btn-sm" type="submit">Logout</button>
                                 </form>
+
                             </li>
                         }
                         else
