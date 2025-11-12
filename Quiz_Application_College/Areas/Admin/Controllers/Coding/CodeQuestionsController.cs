@@ -56,7 +56,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         // POST: /Admin/Coding/CodeQuestions/Create
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Prompt,MaxMarks,AllowedLanguagesCsv,StarterCodeJson,TestCases")] CodeQuestion model)
+        public async Task<IActionResult> Create([Bind("Title,Questions,MaxMarks,AllowedLanguagesCsv,StarterCodeJson,TestCases")] CodeQuestion model)
         {
             Normalize(model);
             var cleaned = CleanCases(model.TestCases);
@@ -105,7 +105,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         // POST: /Admin/Coding/CodeQuestions/Edit/{id}
         [HttpPost("Edit/{id:guid}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("Id,Title,Prompt,MaxMarks,AllowedLanguagesCsv,StarterCodeJson,TestCases")] CodeQuestion model)
+        public async Task<IActionResult> Edit(Guid id, [Bind("Id,Title,Questions,MaxMarks,AllowedLanguagesCsv,StarterCodeJson,TestCases")] CodeQuestion model)
         {
             var existing = await _db.CodeQuestions.Include(x => x.TestCases)
                                                   .FirstOrDefaultAsync(x => x.Id == id);
@@ -135,7 +135,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                 return View("~/Areas/Admin/Views/Coding/CodeQuestions/Edit.cshtml", model);
 
             existing.Title = model.Title;
-            existing.Prompt = model.Prompt;
+            existing.Questions = model.Questions;
             existing.MaxMarks = model.MaxMarks;
             existing.AllowedLanguagesCsv = string.IsNullOrWhiteSpace(model.AllowedLanguagesCsv) ? "python" : model.AllowedLanguagesCsv;
             existing.StarterCodeJson = model.StarterCodeJson;

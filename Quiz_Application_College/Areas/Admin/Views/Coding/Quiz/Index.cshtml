@@ -44,6 +44,9 @@
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-primary" href="/Admin/Coding/Quiz/Edit/@q.Id">Edit</a>
 
+                                        <a class="btn btn-outline-info btn-sm ms-1"
+                                           href="~/Admin/Coding/Quiz/ManageQuestions/@q.Id">Questions</a>
+
                                         <form method="post" action="/Admin/Coding/Quiz/@(q.IsPublished ? "Unpublish" : "Publish")/@q.Id" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-sm @(q.IsPublished ? "btn-warning" : "btn-success")">

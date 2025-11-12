@@ -20,7 +20,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
         private string StudentAttemptKey(Guid spid) => $"SP:{spid:D}";
 
-        // GET: /Student/Coding/Exam/Play?quizId=...
+        // GET
         [HttpGet("Play")]
         public async Task<IActionResult> Play(Guid quizId)
         {
@@ -29,7 +29,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             return View("~/Areas/Student/Views/Coding/Exam/Play.cshtml", vm);
         }
 
-        // POST: Review / Back / Submit
+        // POST Review/Back/Submit
         [HttpPost("Play")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Play([FromForm] Guid quizId, [FromForm] string mode, CodingExamVm posted)
@@ -39,10 +39,8 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             var vm = await BuildVmAsync(id);
             if (vm is null) return BadRequest("You are not allowed to take this Coding quiz right now.");
 
-            // Carry student code selection back into fresh VM
             vm.Language = posted.Language;
             vm.Code = posted.Code;
-
             mode = (mode ?? "").Trim().ToLowerInvariant();
 
             if (mode == "review")
@@ -60,7 +58,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 if (!await HasAttemptsLeftAsync(id))
                     return BadRequest("You have already used all attempts for this quiz.");
 
-                // Record attempt (no grading yet)
                 await RecordAttemptAsync(id);
 
                 var result = new CodingResultVm
@@ -71,7 +68,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                     Language = vm.Language,
                     Code = vm.Code
                 };
-
                 return View("~/Areas/Student/Views/Coding/Exam/Result.cshtml", result);
             }
 
@@ -87,7 +83,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
             var now = DateTimeOffset.UtcNow;
 
-            // enrolled + coding quiz + active schedule
             var allowed = await (from e in _db.Enrollments
                                  join q in _db.Quizzes on e.QuizId equals q.Id
                                  join s in _db.QuizSchedules on q.Id equals s.QuizId
@@ -96,22 +91,20 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                                     && q.Type == QuizType.Coding
                                     && s.StartAt <= now && now <= s.EndAt
                                  select 1).AnyAsync();
-
             if (!allowed) return null;
 
-            if (!await HasAttemptsLeftAsync(quizId))
-                return null;
+            if (!await HasAttemptsLeftAsync(quizId)) return null;
 
             var quiz = await _db.Quizzes.AsNoTracking().FirstOrDefaultAsync(q => q.Id == quizId);
             if (quiz == null) return null;
 
-            // Expecting one or more coding problems attached to the quiz
-            // We’ll load the first problem for now (extend to multi-problem later).
+            // Load first attached coding question with its test cases
             var cq = await (from qq in _db.QuizCodingQuestions
                             join c in _db.CodeQuestions on qq.CodeQuestionId equals c.Id
                             where qq.QuizId == quizId
                             orderby qq.Order
-                            select new { c.Title, c.Prompt })
+                            select c)
+                           .Include(c => c.TestCases)
                            .AsNoTracking()
                            .FirstOrDefaultAsync();
 
@@ -121,10 +114,24 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 QuizTitle = quiz.Title,
                 DurationMinutes = quiz.DurationMinutes,
                 ProblemTitle = cq?.Title ?? "Problem",
-                Prompt = cq?.Prompt ?? "Write a program to solve the problem.",
-                Language = "cpp", // default – change on UI
+                Questions = cq?.Questions ?? "Write a program to solve the problem.",
+                Language = "cpp",
                 Code = ""
             };
+
+            // Only non-hidden test cases are shown to students
+            if (cq?.TestCases != null)
+            {
+                vm.SampleCases = cq.TestCases
+                    .Where(t => !t.IsHidden)
+                    .OrderBy(t => t.Weight).ThenBy(t => t.Id)
+                    .Select(t => new CodingExamVm.Sample
+                    {
+                        Input = t.Input,
+                        ExpectedOutput = t.ExpectedOutput
+                    })
+                    .ToList();
+            }
 
             return vm;
         }
@@ -172,10 +179,17 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             public string QuizTitle { get; set; } = "";
             public int DurationMinutes { get; set; }
             public string ProblemTitle { get; set; } = "Problem";
-            public string Prompt { get; set; } = "";
+            public string Questions { get; set; } = ""; // <- shown as “Question” on UI
             public string Language { get; set; } = "cpp";
             public string Code { get; set; } = "";
             public bool IsReview { get; set; } = false;
+
+            public List<Sample> SampleCases { get; set; } = new();
+            public class Sample
+            {
+                public string Input { get; set; } = "";
+                public string ExpectedOutput { get; set; } = "";
+            }
         }
 
         public class CodingResultVm
