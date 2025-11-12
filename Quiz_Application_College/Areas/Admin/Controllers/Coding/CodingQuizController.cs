@@ -121,6 +121,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             return RedirectToAction(nameof(Index));
         }
 
+
         [HttpPost("Publish/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Publish(Guid id)
@@ -143,6 +144,82 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             quiz.UpdatedAt = DateTimeOffset.Now;
             await _db.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: /Admin/Coding/Quiz/ManageQuestions/{id}
+        [HttpGet("ManageQuestions/{id:guid}")]
+        public async Task<IActionResult> ManageQuestions(Guid id)
+        {
+            var quiz = await _db.Quizzes.AsNoTracking()
+                .FirstOrDefaultAsync(q => q.Id == id && q.Type == QuizType.Coding);
+            if (quiz == null) return NotFound();
+
+            var attached = await _db.QuizCodingQuestions
+                .Where(x => x.QuizId == id)
+                .Select(x => x.CodeQuestionId)
+                .ToListAsync();
+
+            var questions = await _db.CodeQuestions
+                .OrderBy(c => c.Title)
+                .Select(c => new ManageQuestionsVm.Item
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    IsSelected = attached.Contains(c.Id)
+                })
+                .ToListAsync();
+
+            var vm = new ManageQuestionsVm
+            {
+                QuizId = id,
+                QuizTitle = quiz.Title,
+                Items = questions
+            };
+            return View("~/Areas/Admin/Views/Coding/Quiz/ManageQuestions.cshtml", vm);
+        }
+
+        // POST: /Admin/Coding/Quiz/ManageQuestions/{id}
+        [HttpPost("ManageQuestions/{id:guid}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManageQuestions(Guid id, ManageQuestionsVm form)
+        {
+            if (id != form.QuizId) return BadRequest();
+
+            // allow single/multiple now; students will see the first by Order
+            var selectedIds = form.Items.Where(i => i.IsSelected).Select(i => i.Id).ToList();
+
+            var existing = _db.QuizCodingQuestions.Where(x => x.QuizId == id);
+            _db.QuizCodingQuestions.RemoveRange(existing);
+
+            int order = 1;
+            foreach (var qid in selectedIds)
+            {
+                _db.QuizCodingQuestions.Add(new Quiz_Application_College.Domain.Coding.QuizCodingQuestion
+                {
+                    QuizId = id,
+                    CodeQuestionId = qid,
+                    Order = order++
+                });
+            }
+
+            await _db.SaveChangesAsync();
+            TempData["Message"] = "Coding questions updated.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // VM used by the view
+        public class ManageQuestionsVm
+        {
+            public Guid QuizId { get; set; }
+            public string QuizTitle { get; set; } = "";
+            public List<Item> Items { get; set; } = new();
+
+            public class Item
+            {
+                public Guid Id { get; set; }
+                public string Title { get; set; } = "";
+                public bool IsSelected { get; set; }
+            }
         }
     }
 }

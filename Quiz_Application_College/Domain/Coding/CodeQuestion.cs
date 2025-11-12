@@ -11,7 +11,7 @@ namespace Quiz_Application_College.Domain.Coding
 
         // Problem statement (markdown allowed in UI; keep plain text here)
         [Required]
-        public string Prompt { get; set; } = "";
+        public string Questions { get; set; } = "";
 
         // Max score for this coding question
         public decimal MaxMarks { get; set; } = 10m;
