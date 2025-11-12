@@ -1,6 +1,4 @@
-﻿@using System.Globalization
-@model IEnumerable<Quiz_Application_College.Areas.Student.Controllers.Coding.AvailableTileVm>
-
+﻿@model IEnumerable<Quiz_Application_College.Areas.Student.Controllers.Coding.DashboardController.CodingAvailableVm>
 @{
     ViewData["Title"] = "Coding — Available Quizzes";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -8,55 +6,48 @@
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">@ViewData["Title"]</h2>
+        <h2 class="mb-0">Coding — Available Quizzes</h2>
         <a class="btn btn-outline-secondary" href="/Student">← Back to Student Dashboard</a>
     </div>
 
-    @if (Model == null || !Model.Any())
-    {
-        <div class="alert alert-info">
-            No Coding quizzes are currently available for you. Please check again later.
-        </div>
-    }
-    else
-    {
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Quiz</th>
+                    <th style="width:140px">Duration</th>
+                    <th style="width:360px">Window</th>
+                    <th style="width:110px">Attempts</th>
+                    <th style="width:120px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var q in Model)
+                {
                     <tr>
-                        <th style="width:35%">Quiz</th>
-                        <th style="width:15%">Duration</th>
-                        <th style="width:25%">Window</th>
-                        <th style="width:15%">Attempts</th>
-                        <th style="width:10%"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var q in Model.OrderBy(x => x.EndAt))
-                    {
-                        var attemptsText = (q.MaxAttempts <= 0)
-                        ? "—"
-                        : $"{q.UsedAttempts} / {q.MaxAttempts}";
-                        <tr>
-                            <td><div class="fw-semibold">@q.Title</div></td>
-                            <td>@q.DurationMinutes min</td>
-                            <td class="text-nowrap">
-                                <div><small class="text-muted">Start:</small> @q.StartAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm", CultureInfo.InvariantCulture)</div>
-                                <div><small class="text-muted">End:</small> @q.EndAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm", CultureInfo.InvariantCulture)</div>
-                            </td>
-                            <td>@attemptsText</td>
-                            <td class="text-end">
-                                <!-- FIX: controller must be Attempt -->
+                        <td>@q.Title</td>
+                        <td>@q.DurationMinutes min</td>
+                        <td>
+                            <div class="text-muted">
+                                <div>Start: @q.StartAt.ToString("dd MMM yyyy, HH:mm")</div>
+                                <div>End: @q.EndAt.ToString("dd MMM yyyy, HH:mm")</div>
+                            </div>
+                        </td>
+                        <td>@q.UsedAttempts / @q.MaxAttempts</td>
+                        <td class="text-end">
+                            @if (q.CanStart)
+                            {
                                 <a class="btn btn-primary btn-sm"
-                                   href="/Student/Coding/Start?quizId=@q.QuizId">
-                                    Start
-                                </a>
-
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
+                                   href="/Student/Coding/Exam/Play?quizId=@q.QuizId">Start</a>
+                            }
+                            else
+                            {
+                                <a class="btn btn-secondary btn-sm disabled" tabindex="-1" aria-disabled="true">Start</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>

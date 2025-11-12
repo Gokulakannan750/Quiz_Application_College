@@ -1,0 +1,28 @@
+﻿@model Quiz_Application_College.Areas.Student.Controllers.Coding.ExamController.CodingResultVm
+@{
+    ViewData["Title"] = "Coding — Submitted";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">@Model.QuizTitle</h2>
+            <div class="text-muted">Submission received</div>
+        </div>
+        <a class="btn btn-outline-secondary" href="/Student/Coding">Back to Coding Dashboard</a>
+    </div>
+
+    <div class="alert alert-success">
+        Your code has been submitted. (Scoring to be added in the next update.)
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="mb-2"><strong>Problem:</strong> @Model.ProblemTitle</div>
+            <div class="mb-2"><strong>Language:</strong> @Model.Language</div>
+            <label class="form-label">Submitted Code</label>
+            <pre class="border rounded p-3 bg-dark text-white" style="white-space:pre-wrap">@Model.Code</pre>
+        </div>
+    </div>
+</div>

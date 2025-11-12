@@ -1,0 +1,105 @@
+﻿@model Quiz_Application_College.Areas.Student.Controllers.Coding.ExamController.CodingExamVm
+@{
+    ViewData["Title"] = Model.IsReview ? "Coding — Review" : "Coding — Take Quiz";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">@Model.QuizTitle</h2>
+            <div class="text-muted">
+                @(Model.IsReview ? "Review your code" : $"Duration: {Model.DurationMinutes} min")
+            </div>
+        </div>
+        <a class="btn btn-outline-secondary" href="/Student/Coding">← Back to Coding Dashboard</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="mb-2">@Model.ProblemTitle</h5>
+            <div class="alert alert-secondary" style="white-space:pre-wrap">@Model.Prompt</div>
+
+            <form method="post" asp-area="Student" asp-controller="Coding/Exam" asp-action="Play" class="mt-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="QuizId" />
+                <input type="hidden" name="quizId" value="@Model.QuizId" />
+                <input type="hidden" asp-for="IsReview" />
+
+                @if (!Model.IsReview)
+                {
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Language</label>
+                            <select class="form-select" asp-for="Language">
+                                <option value="cpp">C++</option>
+                                <option value="c">C</option>
+                                <option value="java">Java</option>
+                                <option value="python">Python</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label">Your Code</label>
+                        <textarea class="form-control" asp-for="Code" rows="16" id="codeArea"></textarea>
+                        <div class="form-text">Monaco editor enhances this textarea automatically.</div>
+                    </div>
+
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="submit" name="mode" value="review" class="btn btn-secondary">Review</button>
+                        <button type="submit" name="mode" value="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="mb-2"><strong>Language:</strong> @Model.Language</div>
+                    <pre class="border rounded p-3 bg-dark text-white" style="white-space:pre-wrap">@Model.Code</pre>
+
+                    <input type="hidden" asp-for="Language" />
+                    <input type="hidden" asp-for="Code" />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" name="mode" value="back" class="btn btn-outline-secondary">← Back to editor</button>
+                        <button type="submit" name="mode" value="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Monaco loader (safe no-op if offline) -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
+<script>
+    (function () {
+        const ta = document.getElementById('codeArea');
+        if (!ta) return;
+
+        // Lightweight Monaco boot – only if CDN loads
+        window.require && window.require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+        window.require && window.require(['vs/editor/editor.main'], function () {
+            const wrapper = document.createElement('div');
+            wrapper.style.height = '420px';
+            wrapper.className = 'border rounded';
+            ta.parentNode.insertBefore(wrapper, ta);
+            ta.style.display = 'none';
+
+            const editor = monaco.editor.create(wrapper, {
+                value: ta.value || '',
+                language: (document.querySelector('[name="Language"]').value || 'cpp'),
+                automaticLayout: true,
+                minimap: { enabled: false }
+            });
+
+            // keep textarea in sync for form POST
+            editor.onDidChangeModelContent(() => { ta.value = editor.getValue(); });
+
+            // change language on dropdown
+            const langSel = document.querySelector('[name="Language"]');
+            langSel && langSel.addEventListener('change', () => {
+                monaco.editor.setModelLanguage(editor.getModel(), langSel.value || 'cpp');
+            });
+        });
+    })();
+</script>
