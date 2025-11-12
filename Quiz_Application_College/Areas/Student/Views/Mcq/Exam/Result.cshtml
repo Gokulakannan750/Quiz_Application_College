@@ -1,0 +1,35 @@
+﻿@model Quiz_Application_College.Areas.Student.Controllers.Mcq.ExamController.McqResultVm
+@{
+    ViewData["Title"] = "MCQ — Result";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">@Model.QuizTitle</h2>
+            <div class="text-muted">Your result</div>
+        </div>
+        <a class="btn btn-outline-secondary" href="/Student/MCQ">Back to MCQ Dashboard</a>
+    </div>
+
+    <div class="alert alert-success">
+        <strong>Score:</strong> @Model.Correct / @Model.Total
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            @foreach (var it in Model.Items)
+            {
+                <div class="mb-3 pb-2 border-bottom">
+                    <div class="fw-semibold mb-1">Q@it.Number. @it.QuestionText</div>
+                    <div>
+                        <span class="badge @(it.IsCorrect ? "bg-success" : "bg-danger")">
+                            @it.SelectedText
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

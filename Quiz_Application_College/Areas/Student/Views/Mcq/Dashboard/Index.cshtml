@@ -1,43 +1,54 @@
-﻿@model IEnumerable<Quiz_Application_College.Areas.Student.Controllers.Mcq.AvailableTileVm>
+﻿@model IEnumerable<Quiz_Application_College.Areas.Student.Controllers.Mcq.DashboardController.McqAvailableVm>
 @{
-    ViewData["Title"] = "MCQ - Available Quizzes";
+    ViewData["Title"] = "MCQ — Available Quizzes";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2 class="mb-3">@ViewData["Title"]</h2>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">MCQ — Available Quizzes</h2>
+        <a class="btn btn-outline-secondary" href="/Student">← Back to Student Dashboard</a>
+    </div>
 
-@if (Model == null || !Model.Any())
-{
-    <div class="alert alert-info">
-        No MCQ quizzes are currently available.
-    </div>
-}
-else
-{
-    <div class="row g-3">
-        @foreach (var x in Model)
-        {
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-body d-flex justify-content-between align-items-start">
-                        <div>
-                            <h5 class="card-title mb-1">@x.Title</h5>
-                            <div class="text-muted small">
-                                @x.StartAt — @x.EndAt<br />
-                                Attempts: @x.UsedAttempts / @x.MaxAttempts · Duration: @x.DurationMinutes min
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Quiz</th>
+                    <th style="width:140px">Duration</th>
+                    <th style="width:360px">Window</th>
+                    <th style="width:110px">Attempts</th>
+                    <th style="width:120px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var q in Model)
+                {
+                    <tr>
+                        <td>@q.Title</td>
+                        <td>@q.DurationMinutes min</td>
+                        <td>
+                            <div class="text-muted">
+                                <div>Start: @q.StartAt.ToString("dd MMM yyyy, HH:mm")</div>
+                                <div>End: @q.EndAt.ToString("dd MMM yyyy, HH:mm")</div>
                             </div>
-                        </div>
-                        <a class="btn btn-primary"
-                           asp-area="Student"
-                           asp-controller="Exam"
-                           asp-action="Start"
-                           asp-route-quizId="@x.QuizId"
-                           asp-route-scheduleId="@x.ScheduleId">
-                            Start
-                        </a>
-                    </div>
-                </div>
-            </div>
-        }
+                        </td>
+                        <td>@q.UsedAttempts / @q.MaxAttempts</td>
+                        <td class="text-end">
+                            @if (q.CanStart)
+                            {
+                                <a class="btn btn-primary btn-sm"
+                                   href="/Student/MCQ/Exam/Play?quizId=@q.QuizId">Start</a>
+                            }
+                            else
+                            {
+                                <a class="btn btn-secondary btn-sm disabled"
+                                   tabindex="-1" aria-disabled="true">Start</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
-}
+</div>
