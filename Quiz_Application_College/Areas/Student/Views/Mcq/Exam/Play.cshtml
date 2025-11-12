@@ -1,0 +1,106 @@
+﻿@model Quiz_Application_College.Areas.Student.Controllers.Mcq.ExamController.McqExamVm
+@{
+    ViewData["Title"] = Model.IsReview ? "MCQ — Review" : "MCQ — Take Quiz";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">@Model.QuizTitle</h2>
+            <div class="text-muted">
+                @(Model.IsReview ? "Review your selections" : $"Duration: {Model.DurationMinutes} min")
+            </div>
+        </div>
+        <a class="btn btn-outline-secondary" href="/Student/MCQ">← Back to MCQ Dashboard</a>
+    </div>
+
+    @if (Model.Items == null || Model.Items.Count == 0)
+    {
+        <div class="alert alert-warning">No questions assigned to this quiz.</div>
+    }
+    else
+    {
+        <form method="post" asp-area="Student" asp-controller="Mcq/Exam" asp-action="Play" class="card shadow-sm">
+            @Html.AntiForgeryToken()
+            <!-- carry quiz id in two forms to avoid binding issues -->
+            <input type="hidden" asp-for="QuizId" />
+            <input type="hidden" name="quizId" value="@Model.QuizId" />
+            <input type="hidden" asp-for="IsReview" />
+
+            <div class="card-body">
+                @for (int i = 0; i < Model.Items.Count; i++)
+                {
+                    var q = Model.Items[i];
+                    <div class="mb-4 pb-3 border-bottom">
+                        <input type="hidden" name="Items[@i].QuestionId" value="@q.QuestionId" />
+                        <div class="fw-semibold mb-2">Q@q.Index. @q.Text</div>
+
+                        @if (!Model.IsReview)
+                        {
+                            <div class="ms-3">
+                                @for (int j = 0; j < q.Options.Count; j++)
+                                {
+                                    var op = q.Options[j];
+                                    var isChecked = (q.SelectedOptionId == op.OptionId);
+                                    var inputId = $"q_{q.QuestionId}_{op.OptionId}";
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input"
+                                               type="radio"
+                                               name="Items[@i].SelectedOptionId"
+                                               id="@inputId"
+                                               value="@op.OptionId"
+                                               @(isChecked ? "checked" : "") />
+                                        <label class="form-check-label" for="@inputId">@op.Text</label>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Review mode: read-only selection -->
+                            <input type="hidden" name="Items[@i].SelectedOptionId" value="@q.SelectedOptionId" />
+                            <div class="ms-3">
+                                <span class="badge bg-info">
+                                    @(
+                                    q.Options.FirstOrDefault(o => o.OptionId == q.SelectedOptionId)?.Text
+                                    ?? "No answer selected"
+                                    )
+                                </span>
+                            </div>
+                                }
+                    </div>
+                }
+
+                <div class="d-flex gap-2">
+                    @if (!Model.IsReview)
+                    {
+                        <button type="submit" name="mode" value="review" class="btn btn-secondary">
+                            Review
+                        </button>
+                        <button type="submit" name="mode" value="submit" class="btn btn-primary">
+                            Submit
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit" name="mode" value="back" class="btn btn-outline-secondary">
+                            ← Back to quiz (edit)
+                        </button>
+                        <button type="submit" name="mode" value="submit" class="btn btn-primary">
+                            Submit
+                        </button>
+                    }
+            </div>
+
+            <div class="form-text mt-2">
+                @(
+                                Model.IsReview
+                                ? "If something looks wrong, go back and edit. When ready, Submit."
+                                : "Use Review to verify your choices before final Submit. No data is saved to the database."
+                                )
+            </div>
+        </div>
+    </form>
+        }
+</div>

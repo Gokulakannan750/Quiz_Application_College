@@ -14,61 +14,74 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         private readonly ApplicationDbContext _db;
         public DashboardController(ApplicationDbContext db) => _db = db;
 
-        private Guid CurrentProfileId()
+        private Guid Spid()
             => Guid.TryParse(User.FindFirst("spid")?.Value, out var id) ? id : Guid.Empty;
 
+        // must match ExamController's key so counts line up
+        private string StudentAttemptKey(Guid spid) => $"SP:{spid:D}";
+
         [HttpGet("")]
-        [HttpGet("Dashboard")]
         public async Task<IActionResult> Index()
         {
-            var spid = CurrentProfileId();
+            var spid = Spid();
             if (spid == Guid.Empty) return RedirectToAction("Login", "Auth", new { area = "Student" });
 
+            var key = StudentAttemptKey(spid);
             var now = DateTimeOffset.UtcNow;
 
-            var model = await (from e in _db.Enrollments
-                               join s in _db.QuizSchedules on e.QuizId equals s.QuizId
-                               join q in _db.Quizzes on s.QuizId equals q.Id
-                               where e.StudentProfileId == spid
-                                     && q.Type == QuizType.Mcq
-                                     && s.StartAt <= now && now <= s.EndAt
-                               select new AvailableTileVm
-                               {
-                                   QuizId = q.Id,
-                                   ScheduleId = s.Id,
-                                   Title = q.Title,
-                                   DurationMinutes = q.DurationMinutes,
-                                   StartAt = s.StartAt,
-                                   EndAt = s.EndAt,
-                                   MaxAttempts = s.MaxAttempts,
-                               })
-                               .OrderBy(x => x.EndAt)
-                               .ToListAsync();
+            // Enrolled MCQ quizzes with an active schedule window
+            var rows = await (
+                from e in _db.Enrollments
+                join q in _db.Quizzes on e.QuizId equals q.Id
+                join s in _db.QuizSchedules on q.Id equals s.QuizId
+                where e.StudentProfileId == spid
+                   && q.Type == QuizType.Mcq
+                   && s.StartAt <= now && now <= s.EndAt
+                select new
+                {
+                    q.Id,
+                    q.Title,
+                    q.DurationMinutes,
+                    s.StartAt,
+                    s.EndAt,
+                    s.MaxAttempts
+                })
+                .AsNoTracking()
+                .ToListAsync();
 
-            // UsedAttempts (count in Attempts table by quiz within schedule window)
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
-            foreach (var x in model)
+            var quizIds = rows.Select(r => r.Id).Distinct().ToList();
+
+            // Count attempts per quiz using the SAME key that RecordAttemptAsync writes
+            var usedByQuiz = await _db.Attempts
+                .Where(a => quizIds.Contains(a.QuizId) && a.UserId == key)
+                .GroupBy(a => a.QuizId)
+                .Select(g => new { QuizId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.QuizId, x => x.Count);
+
+            var vm = rows.Select(r => new McqAvailableVm
             {
-                x.UsedAttempts = await _db.Attempts.CountAsync(a =>
-                    a.UserId == userId && a.QuizId == x.QuizId &&
-                    a.StartedAt >= x.StartAt && a.StartedAt <= x.EndAt);
-            }
+                QuizId = r.Id,
+                Title = r.Title,
+                DurationMinutes = r.DurationMinutes,
+                StartAt = r.StartAt,
+                EndAt = r.EndAt,
+                MaxAttempts = r.MaxAttempts,
+                UsedAttempts = usedByQuiz.TryGetValue(r.Id, out var c) ? c : 0
+            }).OrderBy(x => x.Title).ToList();
 
-            model = model.Where(x => x.UsedAttempts < x.MaxAttempts).ToList();
-
-            return View("~/Areas/Student/Views/Mcq/Dashboard/Index.cshtml", model);
+            return View("~/Areas/Student/Views/Mcq/Dashboard/Index.cshtml", vm);
         }
-    }
 
-    public class AvailableTileVm
-    {
-        public Guid QuizId { get; set; }
-        public Guid ScheduleId { get; set; }
-        public string Title { get; set; } = "";
-        public int DurationMinutes { get; set; }
-        public DateTimeOffset StartAt { get; set; }
-        public DateTimeOffset EndAt { get; set; }
-        public int MaxAttempts { get; set; }
-        public int UsedAttempts { get; set; }
+        public class McqAvailableVm
+        {
+            public Guid QuizId { get; set; }
+            public string Title { get; set; } = "";
+            public int DurationMinutes { get; set; }
+            public DateTimeOffset StartAt { get; set; }
+            public DateTimeOffset EndAt { get; set; }
+            public int MaxAttempts { get; set; }
+            public int UsedAttempts { get; set; }
+            public bool CanStart => UsedAttempts < MaxAttempts;
+        }
     }
 }
