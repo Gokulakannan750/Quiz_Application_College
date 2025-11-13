@@ -234,6 +234,9 @@ namespace Quiz_Application_College.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<Guid>("QuizId")
                         .HasColumnType("uniqueidentifier");
 
@@ -261,7 +264,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasIndex("QuizId", "UserId", "StartedAt");
 
-                    b.ToTable("Attempts", (string)null);
+                    b.ToTable("Attempts");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.AttemptItem", b =>
@@ -272,6 +275,9 @@ namespace Quiz_Application_College.Migrations
 
                     b.Property<Guid>("AttemptId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("MarksAwarded")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("OptionOrderJson")
                         .IsRequired()
@@ -293,7 +299,7 @@ namespace Quiz_Application_College.Migrations
                     b.HasIndex("AttemptId", "QuestionId")
                         .IsUnique();
 
-                    b.ToTable("AttemptItems", (string)null);
+                    b.ToTable("AttemptItems");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Coding.AttemptCodeItem", b =>
@@ -336,7 +342,7 @@ namespace Quiz_Application_College.Migrations
                     b.HasIndex("AttemptId", "CodeQuestionId")
                         .IsUnique();
 
-                    b.ToTable("AttemptCodeItems", (string)null);
+                    b.ToTable("AttemptCodeItems");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Coding.CodeQuestion", b =>
@@ -368,7 +374,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CodeQuestions", (string)null);
+                    b.ToTable("CodeQuestions");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Coding.CodeTestCase", b =>
@@ -400,7 +406,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasIndex("CodeQuestionId", "IsHidden");
 
-                    b.ToTable("CodeTestCases", (string)null);
+                    b.ToTable("CodeTestCases");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Coding.QuizCodingQuestion", b =>
@@ -420,7 +426,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasIndex("QuizId", "Order");
 
-                    b.ToTable("QuizCodingQuestions", (string)null);
+                    b.ToTable("QuizCodingQuestions");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Enrollment", b =>
@@ -452,7 +458,7 @@ namespace Quiz_Application_College.Migrations
                     b.HasIndex("QuizId", "StudentProfileId")
                         .IsUnique();
 
-                    b.ToTable("Enrollments", (string)null);
+                    b.ToTable("Enrollments");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.McqOption", b =>
@@ -476,7 +482,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasIndex("QuestionId", "IsCorrect");
 
-                    b.ToTable("McqOptions", (string)null);
+                    b.ToTable("McqOptions");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.McqQuestion", b =>
@@ -507,7 +513,7 @@ namespace Quiz_Application_College.Migrations
                         .IsUnique()
                         .HasFilter("[NormalizedText] IS NOT NULL");
 
-                    b.ToTable("McqQuestions", (string)null);
+                    b.ToTable("McqQuestions");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Quiz", b =>
@@ -572,7 +578,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasIndex("Title");
 
-                    b.ToTable("Quizzes", (string)null);
+                    b.ToTable("Quizzes");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.QuizQuestion", b =>
@@ -599,7 +605,7 @@ namespace Quiz_Application_College.Migrations
                     b.HasIndex("QuizId", "QuestionId")
                         .IsUnique();
 
-                    b.ToTable("QuizQuestions", (string)null);
+                    b.ToTable("QuizQuestions");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.QuizSchedule", b =>
@@ -633,7 +639,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasIndex("QuizId", "StartAt", "EndAt");
 
-                    b.ToTable("QuizSchedules", (string)null);
+                    b.ToTable("QuizSchedules");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.Response", b =>
@@ -672,7 +678,7 @@ namespace Quiz_Application_College.Migrations
                     b.HasIndex("AttemptId", "QuestionId")
                         .IsUnique();
 
-                    b.ToTable("Responses", (string)null);
+                    b.ToTable("Responses");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.StudentProfile", b =>
@@ -729,7 +735,7 @@ namespace Quiz_Application_College.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("StudentProfiles", (string)null);
+                    b.ToTable("StudentProfiles");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

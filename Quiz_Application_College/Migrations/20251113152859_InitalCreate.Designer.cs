@@ -12,8 +12,8 @@ using Quiz_Application_College.Data;
 namespace Quiz_Application_College.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251104071124_McqQuestion_Unique_By_NormalizedText")]
-    partial class McqQuestion_Unique_By_NormalizedText
+    [Migration("20251113152859_InitalCreate")]
+    partial class InitalCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -237,6 +237,9 @@ namespace Quiz_Application_College.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<Guid>("QuizId")
                         .HasColumnType("uniqueidentifier");
 
@@ -276,6 +279,9 @@ namespace Quiz_Application_College.Migrations
                     b.Property<Guid>("AttemptId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal>("MarksAwarded")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("OptionOrderJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -299,6 +305,133 @@ namespace Quiz_Application_College.Migrations
                     b.ToTable("AttemptItems");
                 });
 
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.AttemptCodeItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CodeQuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("LastRunAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("MarksAwarded")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("PassedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TotalCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeQuestionId");
+
+                    b.HasIndex("AttemptId", "CodeQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("AttemptCodeItems");
+                });
+
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.CodeQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AllowedLanguagesCsv")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("MaxMarks")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("Questions")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StarterCodeJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CodeQuestions");
+                });
+
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.CodeTestCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CodeQuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExpectedOutput")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Input")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Weight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeQuestionId", "IsHidden");
+
+                    b.ToTable("CodeTestCases");
+                });
+
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.QuizCodingQuestion", b =>
+                {
+                    b.Property<Guid>("QuizId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CodeQuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.HasKey("QuizId", "CodeQuestionId");
+
+                    b.HasIndex("CodeQuestionId");
+
+                    b.HasIndex("QuizId", "Order");
+
+                    b.ToTable("QuizCodingQuestions");
+                });
+
             modelBuilder.Entity("Quiz_Application_College.Domain.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -311,24 +444,21 @@ namespace Quiz_Application_College.Migrations
                     b.Property<Guid>("QuizId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("StudentProfileId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("QuizId", "UserId")
+                    b.HasIndex("StudentProfileId");
+
+                    b.HasIndex("QuizId", "StudentProfileId")
                         .IsUnique();
 
                     b.ToTable("Enrollments");
@@ -441,6 +571,9 @@ namespace Quiz_Application_College.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("int");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -551,6 +684,63 @@ namespace Quiz_Application_College.Migrations
                     b.ToTable("Responses");
                 });
 
+            modelBuilder.Entity("Quiz_Application_College.Domain.StudentProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("College")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RollNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StudentProfiles");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -632,6 +822,55 @@ namespace Quiz_Application_College.Migrations
                     b.Navigation("Question");
                 });
 
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.AttemptCodeItem", b =>
+                {
+                    b.HasOne("Quiz_Application_College.Domain.Attempt", "Attempt")
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Quiz_Application_College.Domain.Coding.CodeQuestion", "CodeQuestion")
+                        .WithMany()
+                        .HasForeignKey("CodeQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attempt");
+
+                    b.Navigation("CodeQuestion");
+                });
+
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.CodeTestCase", b =>
+                {
+                    b.HasOne("Quiz_Application_College.Domain.Coding.CodeQuestion", "CodeQuestion")
+                        .WithMany("TestCases")
+                        .HasForeignKey("CodeQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CodeQuestion");
+                });
+
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.QuizCodingQuestion", b =>
+                {
+                    b.HasOne("Quiz_Application_College.Domain.Coding.CodeQuestion", "CodeQuestion")
+                        .WithMany()
+                        .HasForeignKey("CodeQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Quiz_Application_College.Domain.Quiz", "Quiz")
+                        .WithMany()
+                        .HasForeignKey("QuizId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CodeQuestion");
+
+                    b.Navigation("Quiz");
+                });
+
             modelBuilder.Entity("Quiz_Application_College.Domain.Enrollment", b =>
                 {
                     b.HasOne("Quiz_Application_College.Domain.Quiz", "Quiz")
@@ -640,7 +879,15 @@ namespace Quiz_Application_College.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Quiz_Application_College.Domain.StudentProfile", "StudentProfile")
+                        .WithMany()
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Quiz");
+
+                    b.Navigation("StudentProfile");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.McqOption", b =>
@@ -693,6 +940,11 @@ namespace Quiz_Application_College.Migrations
                         .IsRequired();
 
                     b.Navigation("Attempt");
+                });
+
+            modelBuilder.Entity("Quiz_Application_College.Domain.Coding.CodeQuestion", b =>
+                {
+                    b.Navigation("TestCases");
                 });
 
             modelBuilder.Entity("Quiz_Application_College.Domain.McqQuestion", b =>

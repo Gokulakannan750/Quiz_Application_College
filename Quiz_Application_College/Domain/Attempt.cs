@@ -14,6 +14,7 @@ namespace Quiz_Application_College.Domain
         public string UserId { get; set; } = default!;
 
         public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset ExpiresAt { get; set; }
         public DateTimeOffset? SubmittedAt { get; set; }
 
         // computed total after auto-eval (MCQ) + manual (coding) if any
