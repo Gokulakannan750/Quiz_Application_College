@@ -27,46 +27,29 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             return View("~/Areas/Student/Views/Mcq/Exam/Play.cshtml", vm);
         }
 
-        // ========= PLAY (POST) – Review / Back / Submit =========
+        // ========= PLAY (POST) – DIRECT SUBMIT ONLY =========
         [HttpPost("Play")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Play([FromForm] Guid quizId, [FromForm] string mode, McqExamVm posted)
+        public async Task<IActionResult> Play([FromForm] Guid quizId, McqExamVm posted)
         {
             var id = quizId != Guid.Empty ? quizId : posted?.QuizId ?? Guid.Empty;
 
             var vm = await BuildVmAsync(id);
             if (vm is null) return BadRequest("You are not allowed to take this MCQ quiz right now.");
 
-            // carry over user's choices
+            // carry over user's choices into the fresh VM
             MergeSelections(vm, posted);
 
-            mode = (mode ?? "").Trim().ToLowerInvariant();
+            // BEFORE scoring, re-check attempts in case another window already used it
+            if (!await HasAttemptsLeftAsync(id))
+                return BadRequest("You have already used all attempts for this quiz.");
 
-            if (mode == "review")
-            {
-                vm.IsReview = true;
-                return View("~/Areas/Student/Views/Mcq/Exam/Play.cshtml", vm);
-            }
-            if (mode == "back")
-            {
-                vm.IsReview = false;
-                return View("~/Areas/Student/Views/Mcq/Exam/Play.cshtml", vm);
-            }
-            if (mode == "submit")
-            {
-                // BEFORE scoring, re-check attempts in case another window already used it
-                if (!await HasAttemptsLeftAsync(id))
-                    return BadRequest("You have already used all attempts for this quiz.");
+            var result = await ComputeResultAsync(vm);
 
-                var result = await ComputeResultAsync(vm);
+            // RECORD the attempt so dashboard shows 1 / Max and future starts get blocked
+            await RecordAttemptAsync(id);
 
-                // RECORD the attempt so dashboard shows 1 / Max and future starts get blocked
-                await RecordAttemptAsync(id);
-
-                return View("~/Areas/Student/Views/Mcq/Exam/Result.cshtml", result);
-            }
-
-            return View("~/Areas/Student/Views/Mcq/Exam/Play.cshtml", vm);
+            return View("~/Areas/Student/Views/Mcq/Exam/Result.cshtml", result);
         }
 
         // ========= Helpers =========
@@ -134,7 +117,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         // Check student's used attempts against active schedule's MaxAttempts
         private string StudentAttemptKey(Guid spid) => $"SP:{spid:D}";
 
-        // Check student's used attempts against active schedule's MaxAttempts
         private async Task<bool> HasAttemptsLeftAsync(Guid quizId)
         {
             var spid = Spid();
@@ -166,13 +148,12 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 Id = Guid.NewGuid(),
                 QuizId = quizId,
                 UserId = key,
-                StartedAt = DateTimeOffset.UtcNow,   // your entity has StartedAt (not CreatedAt)
+                StartedAt = DateTimeOffset.UtcNow,
             };
 
             _db.Attempts.Add(attempt);
             await _db.SaveChangesAsync();
         }
-
 
         private static void MergeSelections(McqExamVm target, McqExamVm source)
         {
@@ -227,7 +208,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             [Required] public Guid QuizId { get; set; }
             public string QuizTitle { get; set; } = "";
             public int DurationMinutes { get; set; }
-            public bool IsReview { get; set; } = false;
             public List<Item> Items { get; set; } = new();
 
             public class Item

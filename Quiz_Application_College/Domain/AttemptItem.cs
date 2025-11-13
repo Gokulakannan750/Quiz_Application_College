@@ -25,5 +25,9 @@ namespace Quiz_Application_College.Domain
         // JSON array of option IDs in the display order for this attempt
         [Required]
         public string OptionOrderJson { get; set; } = "[]";
+
+        // Marks for this question in this attempt
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal MarksAwarded { get; set; }
     }
 }
