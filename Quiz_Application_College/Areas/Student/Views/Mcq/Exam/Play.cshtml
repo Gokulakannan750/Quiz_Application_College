@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = Model.QuizTitle;
     Layout = "~/Views/Shared/_Layout.cshtml";
+
 }
 
 <div class="container mt-4">
@@ -111,8 +112,12 @@
             var timerText = document.getElementById('timer-text');
             var timerContainer = document.getElementById('timer-container');
 
-            // Start from full duration each time the exam page is opened
-            var totalSeconds = @Model.DurationMinutes * 60;
+            // 🚨 IMPORTANT: Start from RemainingSeconds sent by the server
+            var totalSeconds = @Model.RemainingSeconds;
+            if (!totalSeconds || totalSeconds < 0) {
+                totalSeconds = 0;
+            }
+
             var originalTotalSeconds = totalSeconds;
 
             function formatTime(seconds) {

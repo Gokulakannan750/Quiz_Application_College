@@ -18,12 +18,16 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         private Guid Spid() =>
             Guid.TryParse(User.FindFirst("spid")?.Value, out var id) ? id : Guid.Empty;
 
+        private string StudentAttemptKey(Guid spid) => $"SP:{spid:D}";
+
         // ========= PLAY (GET) =========
         [HttpGet("Play")]
         public async Task<IActionResult> Play(Guid quizId)
         {
             var vm = await BuildVmAsync(quizId);
-            if (vm is null) return BadRequest("You are not allowed to take this MCQ quiz right now.");
+            if (vm is null)
+                return BadRequest("You are not allowed to take this MCQ quiz right now or the time is over.");
+
             return View("~/Areas/Student/Views/Mcq/Exam/Play.cshtml", vm);
         }
 
@@ -34,19 +38,22 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         {
             var id = quizId != Guid.Empty ? quizId : posted?.QuizId ?? Guid.Empty;
 
+            // Rebuild VM (questions, title, etc.) and also enforce time
             var vm = await BuildVmAsync(id);
-            if (vm is null) return BadRequest("You are not allowed to take this MCQ quiz right now.");
+            if (vm is null)
+                return BadRequest("You are not allowed to take this MCQ quiz right now or the time is over.");
 
             // carry over user's choices into the fresh VM
             MergeSelections(vm, posted);
 
-            // BEFORE scoring, re-check attempts in case another window already used it
+            // Before scoring, re-check attempts in case user already used them
             if (!await HasAttemptsLeftAsync(id))
                 return BadRequest("You have already used all attempts for this quiz.");
 
+            // Compute result
             var result = await ComputeResultAsync(vm);
 
-            // RECORD the attempt so dashboard shows 1 / Max and future starts get blocked
+            // Mark attempt as submitted (use existing active attempt if any)
             await RecordAttemptAsync(id);
 
             return View("~/Areas/Student/Views/Mcq/Exam/Result.cshtml", result);
@@ -54,7 +61,10 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
 
         // ========= Helpers =========
 
-        // Build the VM only if: enrolled + schedule window + attempts left
+        /// <summary>
+        /// Build the VM only if: enrolled + schedule window + attempts left + time remaining.
+        /// Also: create or reuse an active Attempt for timer enforcement.
+        /// </summary>
         private async Task<McqExamVm?> BuildVmAsync(Guid quizId)
         {
             var spid = Spid();
@@ -67,19 +77,40 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                                  join q in _db.Quizzes on e.QuizId equals q.Id
                                  join s in _db.QuizSchedules on q.Id equals s.QuizId
                                  where e.StudentProfileId == spid
-                                    && q.Id == quizId
-                                    && q.Type == QuizType.Mcq
-                                    && s.StartAt <= now && now <= s.EndAt
+                                       && q.Id == quizId
+                                       && q.Type == QuizType.Mcq
+                                       && s.StartAt <= now && now <= s.EndAt
                                  select 1).AnyAsync();
 
             if (!allowed) return null;
 
-            // Block if attempts exhausted
+            // Check attempts left (only counts submitted attempts)
             if (!await HasAttemptsLeftAsync(quizId)) return null;
 
+            // Load quiz
             var quiz = await _db.Quizzes.AsNoTracking().FirstOrDefaultAsync(q => q.Id == quizId);
             if (quiz == null) return null;
 
+            // Get or create an active Attempt for this quiz and student
+            var attempt = await GetOrCreateActiveAttemptAsync(quizId);
+            if (attempt == null) return null;
+
+            // Compute remaining time based on Attempt.StartedAt
+            var examEnd = attempt.StartedAt.AddMinutes(quiz.DurationMinutes);
+            var secondsLeft = (int)Math.Ceiling((examEnd - now).TotalSeconds);
+
+            if (secondsLeft <= 0)
+            {
+                // Time is over. Mark attempt as submitted if not already.
+                if (!attempt.SubmittedAt.HasValue)
+                {
+                    attempt.SubmittedAt = examEnd;
+                    await _db.SaveChangesAsync();
+                }
+                return null;
+            }
+
+            // Load questions in quiz order
             var qids = await _db.QuizQuestions
                 .Where(qq => qq.QuizId == quizId)
                 .OrderBy(qq => qq.Order)
@@ -99,6 +130,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 QuizId = quiz.Id,
                 QuizTitle = quiz.Title,
                 DurationMinutes = quiz.DurationMinutes,
+                RemainingSeconds = secondsLeft,
                 Items = ordered.Select((q, i) => new McqExamVm.Item
                 {
                     Index = i + 1,
@@ -114,12 +146,14 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             return vm;
         }
 
-        // Check student's used attempts against active schedule's MaxAttempts
-        private string StudentAttemptKey(Guid spid) => $"SP:{spid:D}";
-
+        /// <summary>
+        /// Returns true if the student still has attempts left (counts only submitted attempts).
+        /// </summary>
         private async Task<bool> HasAttemptsLeftAsync(Guid quizId)
         {
             var spid = Spid();
+            if (spid == Guid.Empty) return false;
+
             var key = StudentAttemptKey(spid);
             var now = DateTimeOffset.UtcNow;
 
@@ -129,29 +163,80 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 .Select(s => (int?)s.MaxAttempts)
                 .FirstOrDefaultAsync() ?? 1;
 
-            // Count attempts recorded for this student (by synthetic key)
+            // Count only completed attempts (SubmittedAt not null)
             var usedAttempts = await _db.Attempts
-                .Where(a => a.QuizId == quizId && a.UserId == key)
+                .Where(a => a.QuizId == quizId && a.UserId == key && a.SubmittedAt != null)
                 .CountAsync();
 
             return usedAttempts < maxAttempts;
         }
 
-        // Create a minimal Attempt row so future starts are blocked and dashboard shows used attempt
-        private async Task RecordAttemptAsync(Guid quizId)
+        /// <summary>
+        /// Get an existing active attempt (SubmittedAt == null) or create a new one.
+        /// Does NOT increment attempt usage until submission.
+        /// </summary>
+        private async Task<Attempt?> GetOrCreateActiveAttemptAsync(Guid quizId)
         {
             var spid = Spid();
+            if (spid == Guid.Empty) return null;
+
             var key = StudentAttemptKey(spid);
 
+            // Try to find an existing active attempt
+            var existing = await _db.Attempts
+                .Where(a => a.QuizId == quizId && a.UserId == key && a.SubmittedAt == null)
+                .OrderByDescending(a => a.StartedAt)
+                .FirstOrDefaultAsync();
+
+            if (existing != null)
+                return existing;
+
+            // No active attempt yet → create a new one that starts now
             var attempt = new Attempt
             {
                 Id = Guid.NewGuid(),
                 QuizId = quizId,
                 UserId = key,
                 StartedAt = DateTimeOffset.UtcNow,
+                // SubmittedAt will be set on submit
             };
 
             _db.Attempts.Add(attempt);
+            await _db.SaveChangesAsync();
+
+            return attempt;
+        }
+
+        /// <summary>
+        /// Mark the active attempt (if any) as submitted now.
+        /// This is called after successful scoring.
+        /// </summary>
+        private async Task RecordAttemptAsync(Guid quizId)
+        {
+            var spid = Spid();
+            if (spid == Guid.Empty) return;
+
+            var key = StudentAttemptKey(spid);
+
+            var attempt = await _db.Attempts
+                .Where(a => a.QuizId == quizId && a.UserId == key && a.SubmittedAt == null)
+                .OrderByDescending(a => a.StartedAt)
+                .FirstOrDefaultAsync();
+
+            if (attempt == null)
+            {
+                // Safety: if no active attempt, create and immediately mark as submitted
+                attempt = new Attempt
+                {
+                    Id = Guid.NewGuid(),
+                    QuizId = quizId,
+                    UserId = key,
+                    StartedAt = DateTimeOffset.UtcNow
+                };
+                _db.Attempts.Add(attempt);
+            }
+
+            attempt.SubmittedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync();
         }
 
@@ -208,6 +293,10 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             [Required] public Guid QuizId { get; set; }
             public string QuizTitle { get; set; } = "";
             public int DurationMinutes { get; set; }
+
+            // NEW: remaining seconds from server, used by front-end timer
+            public int RemainingSeconds { get; set; }
+
             public List<Item> Items { get; set; } = new();
 
             public class Item
