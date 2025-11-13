@@ -242,16 +242,22 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
 
         private static void MergeSelections(McqExamVm target, McqExamVm source)
         {
-            if (source?.Items == null) return;
+            // If nothing posted, nothing to merge
+            if (source?.Items == null || target?.Items == null)
+                return;
 
-            var map = source.Items
-                .Where(i => i.QuestionId != Guid.Empty)
-                .ToDictionary(i => i.QuestionId, i => i.SelectedOptionId);
+            var count = Math.Min(target.Items.Count, source.Items.Count);
 
-            foreach (var item in target.Items)
+            for (int i = 0; i < count; i++)
             {
-                if (map.TryGetValue(item.QuestionId, out var sel))
-                    item.SelectedOptionId = sel;
+                var postedItem = source.Items[i];
+                var targetItem = target.Items[i];
+
+                // Only copy if student actually selected something
+                if (postedItem.SelectedOptionId != Guid.Empty)
+                {
+                    targetItem.SelectedOptionId = postedItem.SelectedOptionId;
+                }
             }
         }
 
