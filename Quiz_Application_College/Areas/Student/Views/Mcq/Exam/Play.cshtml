@@ -3,7 +3,6 @@
 @{
     ViewData["Title"] = Model.QuizTitle;
     Layout = "~/Views/Shared/_Layout.cshtml";
-
 }
 
 <div class="container mt-4">
@@ -51,13 +50,36 @@
                         }
                         else
                         {
+                            <!-- QUESTION PALETTE -->
+                            <div class="mb-3">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="fw-semibold me-2">Questions:</span>
+
+                                    @for (int i = 0; i < Model.Items.Count; i++)
+                                    {
+                                        var item = Model.Items[i];
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary question-pill"
+                                                data-qindex="@i">
+                                            @item.Index
+                                        </button>
+                                    }
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    <span class="badge bg-primary me-1">&nbsp;</span> Current
+                                    <span class="badge bg-success ms-2 me-1">&nbsp;</span> Answered
+                                    <span class="badge bg-light border text-muted ms-2 me-1">&nbsp;</span> Not answered
+                                </div>
+                            </div>
+
+                            <!-- QUESTIONS (one visible at a time) -->
                             @for (int i = 0; i < Model.Items.Count; i++)
                             {
                                 var item = Model.Items[i];
 
-                                <div class="mb-4 pb-3 border-bottom">
-                                    <input type="hidden" asp-for="Items[@i].QuestionId" />
-                                    <input type="hidden" asp-for="Items[@i].Index" />
+                                <div class="question-block mb-4 pb-3 border-bottom" data-qindex="@i">
+                                    <input type="hidden" name="Items[@i].QuestionId" value="@item.QuestionId" />
+                                    <input type="hidden" name="Items[@i].Index" value="@item.Index" />
 
                                     <h5>
                                         Question @item.Index of @Model.Items.Count
@@ -73,11 +95,12 @@
 
                                             <div class="form-check mb-1">
                                                 <input class="form-check-input"
-                                                       type="radio"
                                                        id="@radioId"
                                                        name="Items[@i].SelectedOptionId"
+                                                       type="radio"
                                                        value="@opt.OptionId"
                                                        @(item.SelectedOptionId == opt.OptionId ? "checked" : "") />
+
 
                                                 <label class="form-check-label" for="@radioId">
                                                     @opt.Text
@@ -87,15 +110,28 @@
                                     </div>
                                 </div>
                             }
-                        }
 
-                        <!-- ACTION BUTTON -->
-                        <div class="d-flex justify-content-end mt-3">
-                            <button type="submit"
-                                    class="btn btn-primary">
-                                Submit quiz
-                            </button>
-                        </div>
+                            <!-- NAVIGATION + SUBMIT BUTTONS -->
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="btn-group" role="group" aria-label="Question navigation">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            id="btnPrev">
+                                        Previous
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            id="btnNext">
+                                        Next
+                                    </button>
+                                </div>
+
+                                <button type="submit"
+                                        class="btn btn-primary">
+                                    Submit quiz
+                                </button>
+                            </div>
+                        }
 
                     </div>
                 </div>
@@ -107,12 +143,15 @@
 
 @section Scripts {
     <script>
+        // =============================
+        // TIMER (server-driven)
+        // =============================
         (function () {
             var form = document.getElementById('examForm');
             var timerText = document.getElementById('timer-text');
             var timerContainer = document.getElementById('timer-container');
 
-            // 🚨 IMPORTANT: Start from RemainingSeconds sent by the server
+            // Start from RemainingSeconds sent by the server
             var totalSeconds = @Model.RemainingSeconds;
             if (!totalSeconds || totalSeconds < 0) {
                 totalSeconds = 0;
@@ -175,6 +214,88 @@
                     updateTimerStyle();
                 }
             }, 1000);
+        })();
+
+
+        // =============================
+        // QUESTION NAVIGATION + PALETTE
+        // =============================
+        (function () {
+            var questionBlocks = document.querySelectorAll('.question-block');
+            var questionPills = document.querySelectorAll('.question-pill');
+            var btnPrev = document.getElementById('btnPrev');
+            var btnNext = document.getElementById('btnNext');
+            var currentIndex = 0;
+
+            if (!questionBlocks.length) return;
+
+            function isAnswered(index) {
+                var block = questionBlocks[index];
+                if (!block) return false;
+                return !!block.querySelector('input[type="radio"]:checked');
+            }
+
+            function updatePillStyles() {
+                if (!questionPills.length) return;
+
+                questionPills.forEach(function (pill, i) {
+                    pill.classList.remove('btn-primary', 'btn-success', 'btn-outline-secondary', 'text-white');
+
+                    if (i === currentIndex) {
+                        pill.classList.add('btn-primary', 'text-white'); // current
+                    } else if (isAnswered(i)) {
+                        pill.classList.add('btn-success', 'text-white'); // answered
+                    } else {
+                        pill.classList.add('btn-outline-secondary'); // not answered
+                    }
+                });
+            }
+
+            function showQuestion(index) {
+                if (index < 0 || index >= questionBlocks.length) return;
+                currentIndex = index;
+
+                questionBlocks.forEach(function (block, i) {
+                    block.style.display = (i === index) ? '' : 'none';
+                });
+
+                updatePillStyles();
+            }
+
+            // Pill click → jump to that question
+            questionPills.forEach(function (pill, i) {
+                pill.addEventListener('click', function () {
+                    showQuestion(i);
+                });
+            });
+
+            // Prev / Next buttons
+            if (btnPrev) {
+                btnPrev.addEventListener('click', function () {
+                    var prev = currentIndex - 1;
+                    if (prev < 0) prev = 0;
+                    showQuestion(prev);
+                });
+            }
+
+            if (btnNext) {
+                btnNext.addEventListener('click', function () {
+                    var next = currentIndex + 1;
+                    if (next >= questionBlocks.length) next = questionBlocks.length - 1;
+                    showQuestion(next);
+                });
+            }
+
+            // When user answers (changes radio), recalc palette
+            var allRadios = document.querySelectorAll('.question-block input[type="radio"]');
+            allRadios.forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    updatePillStyles();
+                });
+            });
+
+            // Initial state: show first question only
+            showQuestion(0);
         })();
     </script>
 }
