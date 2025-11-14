@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
 using Quiz_Application_College.Domain.Coding;
+using Quiz_Application_College.Services.Coding;
 using System.ComponentModel.DataAnnotations;
 
 namespace Quiz_Application_College.Areas.Student.Controllers.Coding
@@ -14,7 +15,13 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
     public class ExamController : Controller
     {
         private readonly ApplicationDbContext _db;
-        public ExamController(ApplicationDbContext db) => _db = db;
+        private readonly ICodeRunner _codeRunner;
+
+        public ExamController(ApplicationDbContext db, ICodeRunner codeRunner)
+        {
+            _db = db;
+            _codeRunner = codeRunner;
+        }
 
         private Guid Spid()
             => Guid.TryParse(User.FindFirst("spid")?.Value, out var id) ? id : Guid.Empty;
@@ -110,6 +117,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Run(Guid quizId, string code, string language)
         {
+
             var spid = Spid();
             if (spid == Guid.Empty)
             {
@@ -139,6 +147,15 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 {
                     Success = false,
                     Message = "You are not allowed to run this quiz right now."
+                });
+            }
+
+            if (!_codeRunner.IsEnabled)
+            {
+                return Json(new RunResponse
+                {
+                    Success = false,
+                    Message = "Code execution is disabled. Configure Judge0 BaseUrl in appsettings.json."
                 });
             }
 
@@ -188,22 +205,58 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 });
             }
 
-            // TODO: plug real judge here. For now: stub, mark all as Passed.
-            var results = allCases.Select(tc => new RunCase
+            var runCases = new List<RunCase>();
+
+            foreach (var tc in allCases)
             {
-                // For hidden testcases we hide the actual data
-                Input = tc.IsHidden ? "" : tc.Input,
-                Expected = tc.IsHidden ? "" : tc.ExpectedOutput,
-                Actual = tc.IsHidden ? "" : tc.ExpectedOutput,
-                Passed = true,
-                IsHidden = tc.IsHidden
-            }).ToList();
+                var req = new CodeRunRequest
+                {
+                    Language = language,
+                    SourceCode = code,
+                    Stdin = tc.Input,
+                    ExpectedOutput = tc.ExpectedOutput
+                };
+
+                CodeRunResult result;
+                try
+                {
+                    result = await _codeRunner.RunAsync(req);
+                }
+                catch (Exception ex)
+                {
+                    return Json(new RunResponse
+                    {
+                        Success = false,
+                        Message = "Error calling online judge: " + ex.Message
+                    });
+                }
+
+                // For hidden testcases: evaluate but DO NOT show details
+                var inputForStudent = tc.IsHidden ? "" : tc.Input;
+                var expectedForStudent = tc.IsHidden ? "" : tc.ExpectedOutput;
+                var actualForStudent = tc.IsHidden ? "" : result.Stdout;
+
+                var passed = result.Succeeded &&
+                             string.Equals(
+                                 result.Stdout?.TrimEnd(),
+                                 tc.ExpectedOutput?.TrimEnd(),
+                                 StringComparison.Ordinal);
+
+                runCases.Add(new RunCase
+                {
+                    Input = inputForStudent,
+                    Expected = expectedForStudent,
+                    Actual = actualForStudent,
+                    Passed = passed,
+                    IsHidden = tc.IsHidden
+                });
+            }
 
             return Json(new RunResponse
             {
                 Success = true,
-                Message = "Stub run: all testcases (public + hidden) marked as passed. Later we plug the real judge API.",
-                Cases = results
+                Message = "Code executed on all testcases (public + hidden).",
+                Cases = runCases
             });
         }
 
@@ -379,6 +432,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             public string Actual { get; set; } = "";
             public bool Passed { get; set; }
             public bool IsHidden { get; set; }
+            public string StatusText { get; set; } = "";
         }
 
     }
