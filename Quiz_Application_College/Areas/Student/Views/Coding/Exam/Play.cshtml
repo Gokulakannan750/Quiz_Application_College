@@ -74,14 +74,15 @@
                     <div class="card-body">
 
                         <div class="mb-3">
-                            <label asp-for="Language" class="form-label">Language</label>
-                            <select asp-for="Language" class="form-select">
-                                <option value="cpp">C++</option>
-                                <option value="csharp">C#</option>
+                            <label for="Language">Language</label>
+                            <select id="Language" name="Language" class="form-control">
                                 <option value="python">Python</option>
+                                <option value="csharp">C#</option>
+                                <option value="cpp">C++</option>
                                 <option value="java">Java</option>
                                 <option value="js">JavaScript</option>
                             </select>
+
                         </div>
 
                         <div class="mb-3">
@@ -235,13 +236,8 @@
         })();
     </script>
 
-    <!-- RUN CODE via local API (fetch, global function called by onclick) -->
     <script>
         function runCode() {
-            // Quick visual check that click is firing
-            // (you can remove this alert later)
-            // alert('Run code clicked');
-
             const runBtn = document.getElementById('btnRun');
             const runPanel = document.getElementById('runPanel');
             const runStatus = document.getElementById('runStatus');
@@ -255,11 +251,11 @@
             }
 
             const runUrl = '@Url.Action("Run", "Exam", new { area = "Student", quizId = Model.QuizId })';
-
             const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
             const token = tokenInput ? tokenInput.value : '';
 
             const code = codeArea ? (codeArea.value || '') : '';
+            // IMPORTANT: this will now be "python", "cpp", "csharp", etc.
             const language = langSelect ? (langSelect.value || 'cpp') : 'cpp';
 
             runBtn.disabled = true;
@@ -311,30 +307,28 @@
                     return;
                 }
 
-                    res.cases.forEach(function (c, index) {
-                        const tr = document.createElement('tr');
-                        const badge = c.passed
-                            ? '<span class="badge bg-success">Passed</span>'
-                            : '<span class="badge bg-danger">Failed</span>';
+                res.cases.forEach(function (c, index) {
+                    const tr = document.createElement('tr');
+                    const badge = c.passed
+                        ? '<span class="badge bg-success">Passed</span>'
+                        : '<span class="badge bg-danger">Failed</span>';
 
-                        // For hidden testcases, do not expose input/expected/actual
-                        const isHidden = !!c.isHidden;
-                        const inputText = isHidden ? 'Hidden testcase' : (c.input || '');
-                        const expectedText = isHidden ? 'Hidden' : (c.expected || '');
-                        const actualText = isHidden ? 'Hidden' : (c.actual || '');
+                    const isHidden = !!c.isHidden;
+                    const inputText = isHidden ? 'Hidden testcase' : (c.input || '');
+                    const expectedText = isHidden ? 'Hidden' : (c.expected || '');
+                    const actualText = isHidden ? 'Hidden' : (c.actual || '');
 
-                        tr.innerHTML =
-                            '<td>' + (index + 1) + '</td>' +
-                            '<td><pre class="mb-0">' + inputText + '</pre></td>' +
-                            '<td><pre class="mb-0">' + expectedText + '</pre></td>' +
-                            '<td><pre class="mb-0">' + actualText + '</pre></td>' +
-                            '<td>' + badge + (isHidden ? ' <span class="text-muted small">(hidden)</span>' : '') + '</td>';
+                    tr.innerHTML =
+                        '<td>' + (index + 1) + '</td>' +
+                        '<td><pre class="mb-0">' + inputText + '</pre></td>' +
+                        '<td><pre class="mb-0">' + expectedText + '</pre></td>' +
+                        '<td><pre class="mb-0">' + actualText + '</pre></td>' +
+                        '<td>' + badge + (isHidden ? ' <span class="text-muted small">(hidden)</span>' : '') + '</td>';
 
-                        if (runBody) {
-                            runBody.appendChild(tr);
-                        }
-            });
-
+                    if (runBody) {
+                        runBody.appendChild(tr);
+                    }
+                });
             })
             .catch(function (err) {
                 console.error(err);
@@ -347,3 +341,4 @@
         }
     </script>
 }
+    
