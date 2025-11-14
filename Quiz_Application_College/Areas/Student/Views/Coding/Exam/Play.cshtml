@@ -102,11 +102,40 @@
                     </div>
                 </div>
 
-                <!-- ONLY SUBMIT (no Review, no Dashboard) -->
-                <div class="d-flex justify-content-end mb-4">
+                <!-- RUN + SUBMIT -->
+                <div class="d-flex justify-content-between mb-3">
+                    <!-- INLINE onclick so we are 100% sure it fires -->
+                    <button type="button" id="btnRun" class="btn btn-secondary" onclick="runCode()">
+                        Run code
+                    </button>
+
                     <button type="submit" class="btn btn-primary">
                         Submit code
                     </button>
+                </div>
+
+                <!-- RUN RESULTS PANEL -->
+                <div class="card mb-4" id="runPanel" style="display:none;">
+                    <div class="card-header fw-bold">Run results</div>
+                    <div class="card-body">
+                        <div id="runStatus" class="mb-2 text-muted">
+                            Click "Run code" to test your solution on public testcases.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle">
+                                <thead>
+                                    <tr>
+                                        <th style="width:5%;">#</th>
+                                        <th style="width:30%;">Input</th>
+                                        <th style="width:30%;">Expected</th>
+                                        <th style="width:30%;">Actual</th>
+                                        <th style="width:5%;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="runBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -204,5 +233,117 @@
                 }
             });
         })();
+    </script>
+
+    <!-- RUN CODE via local API (fetch, global function called by onclick) -->
+    <script>
+        function runCode() {
+            // Quick visual check that click is firing
+            // (you can remove this alert later)
+            // alert('Run code clicked');
+
+            const runBtn = document.getElementById('btnRun');
+            const runPanel = document.getElementById('runPanel');
+            const runStatus = document.getElementById('runStatus');
+            const runBody = document.getElementById('runBody');
+            const codeArea = document.getElementById('codeArea');
+            const langSelect = document.querySelector('[name="Language"]');
+
+            if (!runBtn) {
+                console.error('Run button not found');
+                return;
+            }
+
+            const runUrl = '@Url.Action("Run", "Exam", new { area = "Student", quizId = Model.QuizId })';
+
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+
+            const code = codeArea ? (codeArea.value || '') : '';
+            const language = langSelect ? (langSelect.value || 'cpp') : 'cpp';
+
+            runBtn.disabled = true;
+            if (runPanel) runPanel.style.display = '';
+            if (runStatus) runStatus.textContent = 'Running code on public testcases...';
+            if (runBody) runBody.innerHTML = '';
+
+            const body = new URLSearchParams();
+            body.append('__RequestVerificationToken', token);
+            body.append('code', code);
+            body.append('language', language);
+
+            fetch(runUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: body.toString()
+            })
+            .then(function (resp) {
+                if (!resp.ok) {
+                    throw new Error('HTTP ' + resp.status);
+                }
+                return resp.json();
+            })
+            .then(function (res) {
+                runBtn.disabled = false;
+
+                if (!res || res.success === false) {
+                    if (runStatus) {
+                        runStatus.textContent = (res && res.message) ? res.message : 'Run failed.';
+                    }
+                    if (!res || !res.cases || !res.cases.length) {
+                        if (runBody && !runBody.innerHTML) {
+                            runBody.innerHTML = '<tr><td colspan="5" class="text-muted">No testcases.</td></tr>';
+                        }
+                    }
+                    return;
+                }
+
+                if (runStatus) {
+                    runStatus.textContent = res.message || 'Run completed.';
+                }
+
+                if (!res.cases || !res.cases.length) {
+                    if (runBody) {
+                        runBody.innerHTML = '<tr><td colspan="5" class="text-muted">No testcases returned.</td></tr>';
+                    }
+                    return;
+                }
+
+                    res.cases.forEach(function (c, index) {
+                        const tr = document.createElement('tr');
+                        const badge = c.passed
+                            ? '<span class="badge bg-success">Passed</span>'
+                            : '<span class="badge bg-danger">Failed</span>';
+
+                        // For hidden testcases, do not expose input/expected/actual
+                        const isHidden = !!c.isHidden;
+                        const inputText = isHidden ? 'Hidden testcase' : (c.input || '');
+                        const expectedText = isHidden ? 'Hidden' : (c.expected || '');
+                        const actualText = isHidden ? 'Hidden' : (c.actual || '');
+
+                        tr.innerHTML =
+                            '<td>' + (index + 1) + '</td>' +
+                            '<td><pre class="mb-0">' + inputText + '</pre></td>' +
+                            '<td><pre class="mb-0">' + expectedText + '</pre></td>' +
+                            '<td><pre class="mb-0">' + actualText + '</pre></td>' +
+                            '<td>' + badge + (isHidden ? ' <span class="text-muted small">(hidden)</span>' : '') + '</td>';
+
+                        if (runBody) {
+                            runBody.appendChild(tr);
+                        }
+            });
+
+            })
+            .catch(function (err) {
+                console.error(err);
+                runBtn.disabled = false;
+                if (runStatus) runStatus.textContent = 'Error calling Run API.';
+                if (runBody && !runBody.innerHTML) {
+                    runBody.innerHTML = '<tr><td colspan="5" class="text-muted">Error.</td></tr>';
+                }
+            });
+        }
     </script>
 }

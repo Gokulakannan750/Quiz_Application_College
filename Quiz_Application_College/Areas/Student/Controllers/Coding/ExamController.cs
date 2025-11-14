@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
+using Quiz_Application_College.Domain.Coding;
 using System.ComponentModel.DataAnnotations;
 
 namespace Quiz_Application_College.Areas.Student.Controllers.Coding
@@ -101,6 +102,111 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
             return View("~/Areas/Student/Views/Coding/Exam/Result.cshtml", result);
         }
+
+        // ========================
+        // POST: Run (API for "Run code" button)
+        // ========================
+        [HttpPost("Run")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Run(Guid quizId, string code, string language)
+        {
+            var spid = Spid();
+            if (spid == Guid.Empty)
+            {
+                return Json(new RunResponse
+                {
+                    Success = false,
+                    Message = "Invalid student."
+                });
+            }
+
+            var now = DateTimeOffset.UtcNow;
+
+            // Check student is allowed to access this coding quiz now
+            var allowed = await (from e in _db.Enrollments
+                                 join q in _db.Quizzes on e.QuizId equals q.Id
+                                 join s in _db.QuizSchedules on q.Id equals s.QuizId
+                                 where e.StudentProfileId == spid
+                                       && q.Id == quizId
+                                       && q.Type == QuizType.Coding
+                                       && s.StartAt <= now && now <= s.EndAt
+                                 select q)
+                                 .FirstOrDefaultAsync();
+
+            if (allowed == null)
+            {
+                return Json(new RunResponse
+                {
+                    Success = false,
+                    Message = "You are not allowed to run this quiz right now."
+                });
+            }
+
+            // Load coding question linked to this quiz – same as BuildVmAsync
+            var cq = await (from qq in _db.QuizCodingQuestions
+                            join c in _db.CodeQuestions on qq.CodeQuestionId equals c.Id
+                            where qq.QuizId == quizId
+                            orderby qq.Order
+                            select c)
+                           .Include(c => c.TestCases)
+                           .AsNoTracking()
+                           .FirstOrDefaultAsync();
+
+            // FALLBACK: if quiz is not linked yet, use first CodeQuestion in DB
+            if (cq == null)
+            {
+                cq = await _db.CodeQuestions
+                    .Include(c => c.TestCases)
+                    .AsNoTracking()
+                    .OrderBy(c => c.Title)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (cq == null)
+            {
+                return Json(new RunResponse
+                {
+                    Success = false,
+                    Message = "Problem is not configured yet."
+                });
+            }
+
+            // All testcases: public + hidden
+            var allCases = cq.TestCases
+                .OrderBy(t => t.IsHidden)              // public first, then hidden
+                .ThenBy(t => t.Weight)
+                .ThenBy(t => t.Id)
+                .ToList();
+
+            if (!allCases.Any())
+            {
+                return Json(new RunResponse
+                {
+                    Success = true,
+                    Message = "No testcases configured for this problem.",
+                    Cases = new List<RunCase>()
+                });
+            }
+
+            // TODO: plug real judge here. For now: stub, mark all as Passed.
+            var results = allCases.Select(tc => new RunCase
+            {
+                // For hidden testcases we hide the actual data
+                Input = tc.IsHidden ? "" : tc.Input,
+                Expected = tc.IsHidden ? "" : tc.ExpectedOutput,
+                Actual = tc.IsHidden ? "" : tc.ExpectedOutput,
+                Passed = true,
+                IsHidden = tc.IsHidden
+            }).ToList();
+
+            return Json(new RunResponse
+            {
+                Success = true,
+                Message = "Stub run: all testcases (public + hidden) marked as passed. Later we plug the real judge API.",
+                Cases = results
+            });
+        }
+
 
         // ========================
         // Helper: build VM and enforce timer
@@ -257,5 +363,23 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             public string Language { get; set; } = "";
             public string Code { get; set; } = "";
         }
+
+        // ===== API DTOs for "Run code" =====
+        public class RunResponse
+        {
+            public bool Success { get; set; }
+            public string Message { get; set; } = "";
+            public List<RunCase> Cases { get; set; } = new();
+        }
+
+        public class RunCase
+        {
+            public string Input { get; set; } = "";
+            public string Expected { get; set; } = "";
+            public string Actual { get; set; } = "";
+            public bool Passed { get; set; }
+            public bool IsHidden { get; set; }
+        }
+
     }
 }
