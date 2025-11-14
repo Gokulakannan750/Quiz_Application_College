@@ -1,139 +1,208 @@
 ﻿@model Quiz_Application_College.Areas.Student.Controllers.Coding.ExamController.CodingExamVm
+
 @{
-    ViewData["Title"] = Model.ProblemTitle;
+    ViewData["Title"] = Model.QuizTitle;
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container py-3">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h3 class="mb-0">@Model.ProblemTitle</h3>
-            <div class="text-muted">Duration: @Model.DurationMinutes min</div>
-        </div>
-        <a class="btn btn-outline-secondary" href="/Student/Coding">← Back to Coding Dashboard</a>
-    </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-9 mx-auto">
 
-    <form method="post" class="mt-3">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="quizId" value="@Model.QuizId" />
+            <h2 class="mb-0">@Model.QuizTitle</h2>
+            <p class="text-muted">Duration: @Model.DurationMinutes min</p>
 
-        <!-- Problem / Question -->
-        <div class="card mb-3">
-            <div class="card-header fw-semibold">Problem</div>
-            <div class="card-body">
-                <div class="alert alert-secondary mb-0" style="white-space:pre-wrap">@Model.Questions</div>
+            <!-- TIMER -->
+            <div id="timerBar"
+                 class="alert alert-success d-flex justify-content-between align-items-center mb-3">
+                <strong>Time remaining:</strong>
+                <span id="timerText">--:--</span>
             </div>
-        </div>
 
-        <!-- Language + Editor -->
-        <div class="card mb-3">
-            <div class="card-header fw-semibold">Editor</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">Language</label>
-                    <select name="Language" class="form-select" asp-for="Language">
-                        <option value="cpp" selected="@(Model.Language == "cpp")">C++</option>
-                        <option value="c" selected="@(Model.Language == "c")">C</option>
-                        <option value="python" selected="@(Model.Language == "python")">Python</option>
-                        <option value="csharp" selected="@(Model.Language == "csharp")">C#</option>
-                        <option value="java" selected="@(Model.Language == "java")">Java</option>
-                    </select>
+            <!-- Form posts back to same Coding URL -->
+            <form id="examForm" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="QuizId" />
+
+                <!-- PROBLEM -->
+                <div class="card mb-3">
+                    <div class="card-header fw-bold">Problem</div>
+                    <div class="card-body">
+                        <h5 class="mb-2">@Model.ProblemTitle</h5>
+                        <pre class="mb-0" style="white-space:pre-wrap;">@Model.Questions</pre>
+                    </div>
                 </div>
 
-                <label class="form-label">Your Code</label>
-                <textarea id="code-editor" name="Code" rows="18" class="form-control" asp-for="Code"></textarea>
-                <div class="form-text">Hidden testcases are NOT shown here; they will be used during grading.</div>
-            </div>
-        </div>
-
-        <!-- ✅ Separate table named “Testcases” -->
-        <div class="card mb-3">
-            <div class="card-header fw-semibold">Testcases</div>
-            <div class="card-body">
-                @if (Model.SampleCases.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th style="width:70px">#</th>
-                                    <th style="width:45%">Input</th>
-                                    <th>Expected Output</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @{
-                                    var n = 1;
-                                    foreach (var s in Model.SampleCases)
-                                    {
+                <!-- PUBLIC TESTCASES -->
+                <div class="card mb-3">
+                    <div class="card-header fw-bold">Public testcases</div>
+                    <div class="card-body">
+                        @if (Model.SampleCases != null && Model.SampleCases.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead>
                                         <tr>
-                                            <td class="text-muted">TC @n</td>
-                                            <td><pre class="mb-0" style="white-space:pre-wrap">@s.Input</pre></td>
-                                            <td><pre class="mb-0" style="white-space:pre-wrap">@s.ExpectedOutput</pre></td>
+                                            <th style="width:40%;">Input</th>
+                                            <th style="width:60%;">Expected output</th>
                                         </tr>
-                                        n++;
-                                    }
-                                }
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var t in Model.SampleCases)
+                                        {
+                                            <tr>
+                                                <td><pre class="mb-0" style="white-space:pre-wrap;">@t.Input</pre></td>
+                                                <td><pre class="mb-0" style="white-space:pre-wrap;">@t.ExpectedOutput</pre></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info mb-0">
+                                No public testcases available for this problem.
+                            </div>
+                        }
                     </div>
-                }
-                else
-                {
-                    <div class="alert alert-info mb-0">
-                        No public testcases available for this problem.
-                    </div>
-                }
-            </div>
-        </div>
+                </div>
 
-        <!-- Review / Submit -->
-        <div class="d-flex gap-2">
-            @if (!Model.IsReview)
-            {
-                <button name="mode" value="review" class="btn btn-secondary">Review</button>
-                <button name="mode" value="submit" class="btn btn-primary">Submit</button>
-            }
-            else
-            {
-                <button name="mode" value="back" class="btn btn-outline-secondary">Back to Edit</button>
-                <button name="mode" value="submit" class="btn btn-success">Confirm Submit</button>
-            }
+                <!-- EDITOR -->
+                <div class="card mb-3">
+                    <div class="card-header fw-bold">Editor</div>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <label asp-for="Language" class="form-label">Language</label>
+                            <select asp-for="Language" class="form-select">
+                                <option value="cpp">C++</option>
+                                <option value="csharp">C#</option>
+                                <option value="python">Python</option>
+                                <option value="java">Java</option>
+                                <option value="js">JavaScript</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Code" class="form-label">Your code</label>
+
+                            <!-- Textarea is the POST source; Monaco syncs into this -->
+                            <textarea id="codeArea"
+                                      asp-for="Code"
+                                      class="form-control"
+                                      rows="14"
+                                      spellcheck="false"
+                                      style="font-family:Consolas,'Courier New',monospace;white-space:pre;"></textarea>
+
+                            <div class="form-text">
+                                Hidden testcases are NOT shown here; they will be used during grading.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ONLY SUBMIT (no Review, no Dashboard) -->
+                <div class="d-flex justify-content-end mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        Submit code
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 
-<!-- Monaco loader (safe no-op if offline) -->
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
-<script>
-    (function () {
-        const ta = document.getElementById('codeArea');
-        if (!ta) return;
+@section Scripts {
+    <!-- TIMER SCRIPT using RemainingSeconds from server (no reset on refresh) -->
+    <script>
+        (function () {
+            var total = @Model.RemainingSeconds;
+            if (!total || total < 0) total = 0;
 
-        // Lightweight Monaco boot – only if CDN loads
-        window.require && window.require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-        window.require && window.require(['vs/editor/editor.main'], function () {
-            const wrapper = document.createElement('div');
-            wrapper.style.height = '420px';
-            wrapper.className = 'border rounded';
-            ta.parentNode.insertBefore(wrapper, ta);
-            ta.style.display = 'none';
+            var originalTotal = total;
+            var text = document.getElementById("timerText");
+            var bar = document.getElementById("timerBar");
+            var form = document.getElementById("examForm");
 
-            const editor = monaco.editor.create(wrapper, {
-                value: ta.value || '',
-                language: (document.querySelector('[name="Language"]').value || 'cpp'),
-                automaticLayout: true,
-                minimap: { enabled: false }
+            function render() {
+                var m = Math.floor(total / 60);
+                var s = total % 60;
+                var mm = m.toString().padStart(2, '0');
+                var ss = s.toString().padStart(2, '0');
+                if (text) text.textContent = mm + ":" + ss;
+
+                if (!bar || originalTotal <= 0) return;
+
+                var ratio = total / originalTotal;
+                bar.classList.remove("alert-success", "alert-warning", "alert-danger");
+
+                if (ratio <= 0.2) {
+                    bar.classList.add("alert-danger");   // red
+                } else if (ratio <= 0.5) {
+                    bar.classList.add("alert-warning");  // orange
+                } else {
+                    bar.classList.add("alert-success");  // green
+                }
+            }
+
+            render();
+
+            var timerId = setInterval(function () {
+                total--;
+
+                if (total <= 0) {
+                    total = 0;
+                    clearInterval(timerId);
+                    render();
+                    if (form) form.submit();   // auto-submit when time is over
+                } else {
+                    render();
+                }
+            }, 1000);
+        })();
+    </script>
+
+    <!-- MONACO EDITOR -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
+    <script>
+        (function () {
+            const ta = document.getElementById('codeArea');
+            if (!ta) return;
+            if (!window.require) return;
+
+            window.require.config({
+                paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }
             });
 
-            // keep textarea in sync for form POST
-            editor.onDidChangeModelContent(() => { ta.value = editor.getValue(); });
+            window.require(['vs/editor/editor.main'], function () {
+                const wrapper = document.createElement('div');
+                wrapper.style.height = '420px';
+                wrapper.className = 'border rounded';
+                ta.parentNode.insertBefore(wrapper, ta);
+                ta.style.display = 'none';
 
-            // change language on dropdown
-            const langSel = document.querySelector('[name="Language"]');
-            langSel && langSel.addEventListener('change', () => {
-                monaco.editor.setModelLanguage(editor.getModel(), langSel.value || 'cpp');
+                const langSel = document.querySelector('[name="Language"]');
+
+                const editor = monaco.editor.create(wrapper, {
+                    value: ta.value || '',
+                    language: (langSel && langSel.value) || 'cpp',
+                    automaticLayout: true,
+                    minimap: { enabled: false }
+                });
+
+                // keep textarea in sync for form POST
+                editor.onDidChangeModelContent(function () {
+                    ta.value = editor.getValue();
+                });
+
+                // change language on dropdown
+                if (langSel) {
+                    langSel.addEventListener('change', function () {
+                        monaco.editor.setModelLanguage(editor.getModel(), langSel.value || 'cpp');
+                    });
+                }
             });
-        });
-    })();
-</script>
+        })();
+    </script>
+}
