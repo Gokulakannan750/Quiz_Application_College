@@ -77,16 +77,24 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 return BadRequest("Quiz not found.");
 
             var endAt = attempt.StartedAt + TimeSpan.FromMinutes(quiz.DurationMinutes);
-            if (DateTimeOffset.UtcNow > endAt)
+            var now = DateTimeOffset.UtcNow;
+
+            if (now > endAt)
             {
-                // Time over, mark as submitted
+                // Time over, mark as submitted at end time and stamp submit audit
                 attempt.SubmittedAt = endAt;
+                attempt.SubmitIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                attempt.SubmitUserAgent = Request.Headers["User-Agent"].ToString();
+
                 await _db.SaveChangesAsync();
                 return BadRequest("Time is over for this attempt.");
             }
 
-            // Mark attempt as submitted now
-            attempt.SubmittedAt = DateTimeOffset.UtcNow;
+            // Mark attempt as submitted now and stamp submit audit
+            attempt.SubmittedAt = now;
+            attempt.SubmitIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            attempt.SubmitUserAgent = Request.Headers["User-Agent"].ToString();
+
             await _db.SaveChangesAsync();
 
             // Rebuild VM (question + testcases) only for display
@@ -310,17 +318,22 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 if (completedAttempts >= maxAttempts)
                     return null;
 
+                var startedAt = now;
+
                 activeAttempt = new Attempt
                 {
                     Id = Guid.NewGuid(),
                     QuizId = quizId,
                     UserId = key,
-                    StartedAt = now
+                    StartedAt = startedAt,
+                    StartIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    StartUserAgent = Request.Headers["User-Agent"].ToString()
                 };
 
                 _db.Attempts.Add(activeAttempt);
                 await _db.SaveChangesAsync();
             }
+
 
             // Compute remaining time based on StartedAt
             var endAt = activeAttempt.StartedAt + TimeSpan.FromMinutes(durationMinutes);

@@ -27,6 +27,13 @@ namespace Quiz_Application_College.Domain
         // friendly flags
         public bool IsSubmitted => SubmittedAt.HasValue;
 
+        // audit info
+        public string? StartIpAddress { get; set; }
+        public string? StartUserAgent { get; set; }
+
+        public string? SubmitIpAddress { get; set; }
+        public string? SubmitUserAgent { get; set; }
+
         [Timestamp] public byte[]? RowVersion { get; set; }
     }
 }

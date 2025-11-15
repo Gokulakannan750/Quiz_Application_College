@@ -171,10 +171,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             return usedAttempts < maxAttempts;
         }
 
-        /// <summary>
-        /// Get an existing active attempt (SubmittedAt == null) or create a new one.
-        /// Does NOT increment attempt usage until submission.
-        /// </summary>
+        //  <summary>
         private async Task<Attempt?> GetOrCreateActiveAttemptAsync(Guid quizId)
         {
             var spid = Spid();
@@ -192,13 +189,17 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 return existing;
 
             // No active attempt yet → create a new one that starts now
+            var now = DateTimeOffset.UtcNow;
+
             var attempt = new Attempt
             {
                 Id = Guid.NewGuid(),
                 QuizId = quizId,
                 UserId = key,
-                StartedAt = DateTimeOffset.UtcNow,
+                StartedAt = now,
                 // SubmittedAt will be set on submit
+                StartIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                StartUserAgent = Request.Headers["User-Agent"].ToString()
             };
 
             _db.Attempts.Add(attempt);
@@ -207,10 +208,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             return attempt;
         }
 
-        /// <summary>
-        /// Mark the active attempt (if any) as submitted now.
-        /// This is called after successful scoring.
-        /// </summary>
+        // </summary>
         private async Task RecordAttemptAsync(Guid quizId)
         {
             var spid = Spid();
@@ -226,17 +224,25 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             if (attempt == null)
             {
                 // Safety: if no active attempt, create and immediately mark as submitted
+                var nowFallback = DateTimeOffset.UtcNow;
+
                 attempt = new Attempt
                 {
                     Id = Guid.NewGuid(),
                     QuizId = quizId,
                     UserId = key,
-                    StartedAt = DateTimeOffset.UtcNow
+                    StartedAt = nowFallback,
+                    StartIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    StartUserAgent = Request.Headers["User-Agent"].ToString()
                 };
                 _db.Attempts.Add(attempt);
             }
 
-            attempt.SubmittedAt = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.UtcNow;
+            attempt.SubmittedAt = now;
+            attempt.SubmitIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            attempt.SubmitUserAgent = Request.Headers["User-Agent"].ToString();
+
             await _db.SaveChangesAsync();
         }
 
