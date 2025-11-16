@@ -17,6 +17,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
         private Guid Spid()
             => Guid.TryParse(User.FindFirst("spid")?.Value, out var id) ? id : Guid.Empty;
 
+        // Same key used by Coding ExamController (Attempts.UserId = "SP:{spid}")
         private string StudentAttemptKey(Guid spid) => $"SP:{spid:D}";
 
         [HttpGet("")]
@@ -29,45 +30,63 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             var key = StudentAttemptKey(spid);
             var now = DateTimeOffset.UtcNow;
 
+            // 1) All coding schedules for this student (upcoming, live, finished)
             var rows = await (
-                from e in _db.Enrollments
-                join q in _db.Quizzes on e.QuizId equals q.Id
-                join s in _db.QuizSchedules on q.Id equals s.QuizId
-                where e.StudentProfileId == spid
-                   && q.Type == QuizType.Coding
-                   && s.StartAt <= now && now <= s.EndAt
-                select new
-                {
-                    q.Id,
-                    q.Title,
-                    q.DurationMinutes,
-                    s.StartAt,
-                    s.EndAt,
-                    s.MaxAttempts
-                })
+                    from e in _db.Enrollments
+                    join q in _db.Quizzes on e.QuizId equals q.Id
+                    join s in _db.QuizSchedules on q.Id equals s.QuizId
+                    where e.StudentProfileId == spid
+                          && q.Type == QuizType.Coding
+                    select new
+                    {
+                        q.Id,
+                        q.Title,
+                        q.DurationMinutes,
+                        s.StartAt,
+                        s.EndAt,
+                        s.MaxAttempts
+                    })
                 .AsNoTracking()
                 .ToListAsync();
 
             var quizIds = rows.Select(r => r.Id).Distinct().ToList();
 
+            // 2) Attempts used by this student (Attempts.UserId = "SP:{spid}")
             var usedByQuiz = await _db.Attempts
                 .Where(a => quizIds.Contains(a.QuizId) && a.UserId == key)
                 .GroupBy(a => a.QuizId)
                 .Select(g => new { QuizId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.QuizId, x => x.Count);
 
+            // 3) Build view-model + status rank: Live(0), Upcoming(1), Finished(2)
             var vm = rows
-                .Select(r => new CodingAvailableVm
+                .Select(r =>
                 {
-                    QuizId = r.Id,
-                    Title = r.Title,
-                    DurationMinutes = r.DurationMinutes,
-                    StartAt = r.StartAt,
-                    EndAt = r.EndAt,
-                    MaxAttempts = r.MaxAttempts,
-                    UsedAttempts = usedByQuiz.TryGetValue(r.Id, out var c) ? c : 0
+                    var used = usedByQuiz.TryGetValue(r.Id, out var c) ? c : 0;
+
+                    int statusRank;
+                    if (now < r.StartAt)
+                        statusRank = 1;          // Upcoming
+                    else if (now <= r.EndAt)
+                        statusRank = 0;          // Live
+                    else
+                        statusRank = 2;          // Finished
+
+                    return new CodingAvailableVm
+                    {
+                        QuizId = r.Id,
+                        Title = r.Title,
+                        DurationMinutes = r.DurationMinutes,
+                        StartAt = r.StartAt,
+                        EndAt = r.EndAt,
+                        MaxAttempts = r.MaxAttempts,
+                        UsedAttempts = used,
+                        StatusRank = statusRank
+                    };
                 })
-                .OrderBy(x => x.Title)
+                .OrderBy(x => x.StatusRank)       // Live → Upcoming → Finished
+                .ThenBy(x => x.StartAt)
+                .ThenBy(x => x.Title)
                 .ToList();
 
             return View("~/Areas/Student/Views/Coding/Dashboard/Index.cshtml", vm);
@@ -82,6 +101,10 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             public DateTimeOffset EndAt { get; set; }
             public int MaxAttempts { get; set; }
             public int UsedAttempts { get; set; }
+
+            // used only for ordering in controller
+            public int StatusRank { get; set; }
+
             public bool CanStart => UsedAttempts < MaxAttempts;
         }
     }
