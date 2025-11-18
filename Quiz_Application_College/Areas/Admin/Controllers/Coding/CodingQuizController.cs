@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
-using Quiz_Application_College.ViewModels;
-using Quiz_Application_College.ViewModels.Coding;
 
 namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 {
@@ -16,80 +14,134 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         private readonly ApplicationDbContext _db;
         public CodingQuizController(ApplicationDbContext db) => _db = db;
 
-        // GET: /Admin/Coding/Quiz  and /Admin/Coding/Quiz/Index
+        // --------------------------------------------------------------------
+        // 1) TOP LEVEL: LANGUAGE FOLDERS
+        // GET /Admin/Coding/Quiz  or /Admin/Coding/Quiz/Index
+        // --------------------------------------------------------------------
         [HttpGet("")]
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            var list = await _db.Quizzes
+            var items = await _db.Quizzes
                 .Where(q => q.Type == QuizType.Coding)
-                .OrderByDescending(q => q.CreatedAt)
+                .GroupBy(q => q.ProgrammingLanguage ?? "Uncategorized")
+                .Select(g => new LanguageFolderVm
+                {
+                    Name = g.Key,
+                    QuizCount = g.Count(),
+                    PublishedCount = g.Count(q => q.IsPublished)
+                })
+                .OrderBy(x => x.Name)
                 .ToListAsync();
 
-            return View("~/Areas/Admin/Views/Coding/Quiz/Index.cshtml", list);
+            return View("~/Areas/Admin/Views/Coding/Quiz/Folders.cshtml", items);
         }
 
-        [HttpGet("Create")]
-        public IActionResult Create()
+        // --------------------------------------------------------------------
+        // 2) INSIDE A FOLDER: LIST QUIZZES FOR ONE LANGUAGE
+        // GET /Admin/Coding/Quiz/Language/{language}
+        // --------------------------------------------------------------------
+        [HttpGet("Language/{language}")]
+        public async Task<IActionResult> ByLanguage(string language)
         {
-            var vm = new QuizCreateVm
+            if (string.IsNullOrWhiteSpace(language))
+                return RedirectToAction(nameof(Index));
+
+            var data = await _db.Quizzes
+                .Where(q => q.Type == QuizType.Coding &&
+                            (q.ProgrammingLanguage ?? "Uncategorized") == language)
+                .Select(q => new QuizRowVm
+                {
+                    Id = q.Id,
+                    Title = q.Title,
+                    Description = q.Description,
+                    DurationMinutes = q.DurationMinutes,
+                    IsPublished = q.IsPublished,
+                    CreatedAt = q.CreatedAt,
+                    QuestionCount = _db.QuizCodingQuestions.Count(c => c.QuizId == q.Id),
+                    ScheduleCount = _db.QuizSchedules.Count(s => s.QuizId == q.Id),
+                    ProgrammingLanguage = q.ProgrammingLanguage
+                })
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            ViewBag.Language = language;
+            return View("~/Areas/Admin/Views/Coding/Quiz/Index.cshtml", data);
+        }
+
+        // --------------------------------------------------------------------
+        // 3) CREATE quiz inside a language folder
+        // GET /Admin/Coding/Quiz/Create/{language?}
+        // --------------------------------------------------------------------
+        [HttpGet("Create/{language?}")]
+        public IActionResult Create(string? language)
+        {
+            ViewBag.Language = language ?? "Uncategorized";
+
+            var quiz = new Quiz
             {
                 DurationMinutes = 60,
-                TotalMarks = 0, // computed later from testcases
+                TotalMarks = 0,
                 EnableNegativeMarking = false,
                 NegativeMarkPerWrong = 0,
                 ShuffleQuestions = false,
                 ShuffleOptions = false,
                 ShowReviewOnSubmit = true,
-                ShowScoreOnSubmit = true
+                ShowScoreOnSubmit = true,
+                Type = QuizType.Coding,
+                ProgrammingLanguage = language
             };
-            return View("~/Areas/Admin/Views/Coding/Quiz/Create.cshtml", vm);
+
+            // We use the Quiz entity directly for create/edit
+            return View("~/Areas/Admin/Views/Coding/Quiz/Create.cshtml", quiz);
         }
 
-        [HttpPost("Create")]
+        // POST /Admin/Coding/Quiz/Create/{language?}
+        [HttpPost("Create/{language?}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(QuizCreateVm vm)
+        public async Task<IActionResult> Create(string? language, Quiz form)
         {
-            // enforce coding-safe flags
-            vm.EnableNegativeMarking = false;
-            vm.NegativeMarkPerWrong = 0;
-            vm.ShuffleQuestions = false;
-            vm.ShuffleOptions = false;
-            vm.TotalMarks = 0; // computed later from testcases
+            var lang = language ?? form.ProgrammingLanguage ?? "Uncategorized";
+            ViewBag.Language = lang;
 
             if (!ModelState.IsValid)
-                return View("~/Areas/Admin/Views/Coding/Quiz/Create.cshtml", vm);
+                return View("~/Areas/Admin/Views/Coding/Quiz/Create.cshtml", form);
 
             var quiz = new Quiz
             {
-                Title = vm.Title,
-                Description = vm.Description,
-                DurationMinutes = vm.DurationMinutes,
-                TotalMarks = vm.TotalMarks,
+                Title = form.Title,
+                Description = form.Description,
+                DurationMinutes = form.DurationMinutes,
+                TotalMarks = 0,
                 EnableNegativeMarking = false,
                 NegativeMarkPerWrong = 0,
                 ShuffleQuestions = false,
                 ShuffleOptions = false,
-                ShowReviewOnSubmit = vm.ShowReviewOnSubmit,
-                ShowScoreOnSubmit = vm.ShowScoreOnSubmit,
+                ShowReviewOnSubmit = form.ShowReviewOnSubmit,
+                ShowScoreOnSubmit = form.ShowScoreOnSubmit,
                 IsPublished = false,
                 CreatedAt = DateTimeOffset.Now,
-
-                // NEW: mark as Coding
-                Type = QuizType.Coding
+                Type = QuizType.Coding,
+                ProgrammingLanguage = lang
             };
 
             _db.Quizzes.Add(quiz);
             await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            return RedirectToAction(nameof(ByLanguage), new { language = lang });
         }
 
+        // --------------------------------------------------------------------
+        // 4) EDIT quiz (keeps its language)
+        // --------------------------------------------------------------------
         [HttpGet("Edit/{id:guid}")]
         public async Task<IActionResult> Edit(Guid id)
         {
             var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
+            if (quiz == null || quiz.Type != QuizType.Coding)
+                return NotFound();
 
+            ViewBag.Language = quiz.ProgrammingLanguage ?? "Uncategorized";
             return View("~/Areas/Admin/Views/Coding/Quiz/Edit.cshtml", quiz);
         }
 
@@ -98,16 +150,21 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         public async Task<IActionResult> Edit(Guid id, Quiz form)
         {
             if (id != form.Id) return BadRequest();
-            if (!ModelState.IsValid) return View("~/Areas/Admin/Views/Coding/Quiz/Edit.cshtml", form);
 
             var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
+            if (quiz == null || quiz.Type != QuizType.Coding)
+                return NotFound();
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Language = quiz.ProgrammingLanguage ?? "Uncategorized";
+                return View("~/Areas/Admin/Views/Coding/Quiz/Edit.cshtml", form);
+            }
 
             quiz.Title = form.Title;
             quiz.Description = form.Description;
             quiz.DurationMinutes = form.DurationMinutes;
 
-            // coding-safe flags (no negative/shuffle)
             quiz.EnableNegativeMarking = false;
             quiz.NegativeMarkPerWrong = 0;
             quiz.ShuffleQuestions = false;
@@ -118,20 +175,28 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             quiz.UpdatedAt = DateTimeOffset.Now;
 
             await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            var lang = quiz.ProgrammingLanguage ?? "Uncategorized";
+            return RedirectToAction(nameof(ByLanguage), new { language = lang });
         }
 
-
+        // --------------------------------------------------------------------
+        // 5) Publish / Unpublish
+        // --------------------------------------------------------------------
         [HttpPost("Publish/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Publish(Guid id)
         {
             var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
+            if (quiz == null || quiz.Type != QuizType.Coding)
+                return NotFound();
+
             quiz.IsPublished = true;
             quiz.UpdatedAt = DateTimeOffset.Now;
             await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            var lang = quiz.ProgrammingLanguage ?? "Uncategorized";
+            return RedirectToAction(nameof(ByLanguage), new { language = lang });
         }
 
         [HttpPost("Unpublish/{id:guid}")]
@@ -139,14 +204,20 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         public async Task<IActionResult> Unpublish(Guid id)
         {
             var quiz = await _db.Quizzes.FindAsync(id);
-            if (quiz == null) return NotFound();
+            if (quiz == null || quiz.Type != QuizType.Coding)
+                return NotFound();
+
             quiz.IsPublished = false;
             quiz.UpdatedAt = DateTimeOffset.Now;
             await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            var lang = quiz.ProgrammingLanguage ?? "Uncategorized";
+            return RedirectToAction(nameof(ByLanguage), new { language = lang });
         }
 
-        // GET: /Admin/Coding/Quiz/ManageQuestions/{id}
+        // --------------------------------------------------------------------
+        // 6) Manage coding questions for a quiz (same as before)
+        // --------------------------------------------------------------------
         [HttpGet("ManageQuestions/{id:guid}")]
         public async Task<IActionResult> ManageQuestions(Guid id)
         {
@@ -178,14 +249,43 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             return View("~/Areas/Admin/Views/Coding/Quiz/ManageQuestions.cshtml", vm);
         }
 
-        // POST: /Admin/Coding/Quiz/ManageQuestions/{id}
+        // --------------------------------------------------------------------
+        // 7) Delete quiz
+        // --------------------------------------------------------------------
+        [HttpPost("Delete/{id:guid}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var quiz = await _db.Quizzes.FindAsync(id);
+            if (quiz == null || quiz.Type != QuizType.Coding)
+                return NotFound();
+
+            var lang = quiz.ProgrammingLanguage ?? "Uncategorized";
+
+            // Remove related coding-question links
+            var links = _db.QuizCodingQuestions.Where(x => x.QuizId == id);
+            _db.QuizCodingQuestions.RemoveRange(links);
+
+            // Remove schedules if any (even though we don't show them in UI now)
+            var schedules = _db.QuizSchedules.Where(s => s.QuizId == id);
+            _db.QuizSchedules.RemoveRange(schedules);
+
+            // TODO: if later you want, we can also remove attempts related to this quiz
+
+            _db.Quizzes.Remove(quiz);
+            await _db.SaveChangesAsync();
+
+            TempData["Message"] = "Coding quiz deleted.";
+            return RedirectToAction(nameof(ByLanguage), new { language = lang });
+        }
+
+        
         [HttpPost("ManageQuestions/{id:guid}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ManageQuestions(Guid id, ManageQuestionsVm form)
         {
             if (id != form.QuizId) return BadRequest();
 
-            // allow single/multiple now; students will see the first by Order
             var selectedIds = form.Items.Where(i => i.IsSelected).Select(i => i.Id).ToList();
 
             var existing = _db.QuizCodingQuestions.Where(x => x.QuizId == id);
@@ -194,12 +294,13 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             int order = 1;
             foreach (var qid in selectedIds)
             {
-                _db.QuizCodingQuestions.Add(new Quiz_Application_College.Domain.Coding.QuizCodingQuestion
-                {
-                    QuizId = id,
-                    CodeQuestionId = qid,
-                    Order = order++
-                });
+                _db.QuizCodingQuestions.Add(
+                    new Quiz_Application_College.Domain.Coding.QuizCodingQuestion
+                    {
+                        QuizId = id,
+                        CodeQuestionId = qid,
+                        Order = order++
+                    });
             }
 
             await _db.SaveChangesAsync();
@@ -207,7 +308,27 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             return RedirectToAction(nameof(Index));
         }
 
-        // VM used by the view
+        // ---------------------- View Models ----------------------
+        public class LanguageFolderVm
+        {
+            public string Name { get; set; } = "";
+            public int QuizCount { get; set; }
+            public int PublishedCount { get; set; }
+        }
+
+        public class QuizRowVm
+        {
+            public Guid Id { get; set; }
+            public string Title { get; set; } = "";
+            public string? Description { get; set; }
+            public int DurationMinutes { get; set; }
+            public bool IsPublished { get; set; }
+            public DateTimeOffset CreatedAt { get; set; }
+            public int QuestionCount { get; set; }
+            public int ScheduleCount { get; set; }
+            public string? ProgrammingLanguage { get; set; }
+        }
+
         public class ManageQuestionsVm
         {
             public Guid QuizId { get; set; }

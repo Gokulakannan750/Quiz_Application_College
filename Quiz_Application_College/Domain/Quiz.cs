@@ -26,6 +26,9 @@ namespace Quiz_Application_College.Domain
         [Range(0, 1000)]
         public int TotalMarks { get; set; } = 100;
 
+        // NEW: language folder label for coding quizzes (C, Python, Java, etc.)
+        public string? ProgrammingLanguage { get; set; }
+
         public bool EnableNegativeMarking { get; set; } = false;
 
         // if enabled, how much to deduct per wrong MCQ (can be 0.25 etc.)

@@ -1,70 +1,91 @@
-﻿@model Quiz_Application_College.ViewModels.QuizCreateVm
+﻿@using Quiz_Application_College.Domain
+@model Quiz
+
 @{
-    ViewData["Title"] = "Create Coding Quiz";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    var language = ViewBag.Language as string ?? (Model.ProgrammingLanguage ?? "Uncategorized");
+    ViewData["Title"] = $"New Coding Quiz – {language}";
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Create Coding Quiz</h2>
-        <a class="btn btn-outline-secondary" href="/Admin/Coding/Quiz">Back</a>
-    </div>
+<h1 class="h3 mb-3">New Coding Quiz – @language</h1>
 
-    <form method="post" action="/Admin/Coding/Quiz/Create">
-        @Html.AntiForgeryToken()
-        <div class="card shadow-sm">
-            <div class="card-body">
+<a asp-area="Admin"
+   asp-controller="CodingQuiz"
+   asp-action="ByLanguage"
+   asp-route-language="@language"
+   class="btn btn-outline-secondary mb-3">
+    &larr; Back to @language quizzes
+</a>
 
-                <div class="mb-3">
-                    <label class="form-label">Title</label>
-                    <input asp-for="Title" class="form-control" />
-                    <span asp-validation-for="Title" class="text-danger"></span>
-                </div>
+<form asp-area="Admin"
+      asp-controller="CodingQuiz"
+      asp-action="Create"
+      asp-route-language="@language"
+      method="post">
+    @Html.AntiForgeryToken()
 
-                <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                </div>
-
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Duration (minutes)</label>
-                        <input asp-for="DurationMinutes" class="form-control" type="number" min="1" />
-                        <span asp-validation-for="DurationMinutes" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="form-text mt-4">
-                            Total marks will be calculated from testcases. It starts at 0.
-                        </div>
-                    </div>
-                </div>
-
-                <hr />
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-check mb-2">
-                            <input asp-for="ShowReviewOnSubmit" class="form-check-input" />
-                            <label class="form-check-label" asp-for="ShowReviewOnSubmit">Show Review on Submit</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-check mb-2">
-                            <input asp-for="ShowScoreOnSubmit" class="form-check-input" />
-                            <label class="form-check-label" asp-for="ShowScoreOnSubmit">Show Score on Submit</label>
-                        </div>
-                    </div>
-                </div>
-
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
             </div>
-            <div class="card-footer d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Create</button>
-                <a class="btn btn-outline-secondary" href="/Admin/Coding/Quiz">Cancel</a>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
             </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label asp-for="DurationMinutes" class="form-label"></label>
+                    <input asp-for="DurationMinutes" class="form-control" />
+                    <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Programming Language</label>
+                    <!-- Show folder language; allow override if you want -->
+                    <input name="ProgrammingLanguage"
+                           value="@language"
+                           class="form-control" />
+                    <div class="form-text">
+                        This determines which folder this quiz appears under (C, C++, Python, etc.).
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4 form-check">
+                    <input asp-for="ShowReviewOnSubmit" class="form-check-input" />
+                    <label asp-for="ShowReviewOnSubmit" class="form-check-label"></label>
+                </div>
+                <div class="col-md-4 form-check">
+                    <input asp-for="ShowScoreOnSubmit" class="form-check-input" />
+                    <label asp-for="ShowScoreOnSubmit" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <!-- For coding quizzes, these are controlled in the controller;
+                 no need to show negative marking / shuffle in this form. -->
+
+            <button type="submit" class="btn btn-primary">
+                Save Quiz
+            </button>
+            <a asp-area="Admin"
+               asp-controller="CodingQuiz"
+               asp-action="ByLanguage"
+               asp-route-language="@language"
+               class="btn btn-outline-secondary ms-2">
+                Cancel
+            </a>
+
         </div>
-    </form>
-</div>
+    </div>
+</form>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }
