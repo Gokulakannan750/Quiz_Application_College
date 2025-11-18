@@ -18,5 +18,9 @@ namespace Quiz_Application_College.ViewModels
 
         [MaxLength(100)]
         public string? Timezone { get; set; }
+
+        // Optional: Programming language filter for the coding quiz
+        public string? ProgrammingLanguage { get; set; }
+
     }
 }

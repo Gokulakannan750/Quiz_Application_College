@@ -1,69 +1,128 @@
-﻿@model IEnumerable<Quiz_Application_College.Domain.Quiz>
+﻿@using Quiz_Application_College.Areas.Admin.Controllers.Coding
+@model List<CodingQuizController.QuizRowVm>
+
 @{
-    ViewData["Title"] = "Coding Quizzes";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    var language = ViewBag.Language as string ?? "Uncategorized";
+    ViewData["Title"] = $"Coding Quizzes – {language}";
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Coding Quizzes</h2>
-        <div class="d-flex gap-2">
-            <a class="btn btn-primary" href="/Admin/Coding/Quiz/Create">Create Quiz</a>
-            <a class="btn btn-outline-secondary" href="/Admin/Coding">Back to Coding Dashboard</a>
-        </div>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h2 class="mb-1">@ViewData["Title"]</h2>
+        <p class="text-muted mb-0">
+            Quizzes for @language. Manage questions and publish status.
+        </p>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Duration</th>
-                            <th>Total Marks</th>
-                            <th>Published</th>
-                            <th>Created</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model != null && Model.Any())
-                        {
-                            foreach (var q in Model)
-                            {
-                                <tr>
-                                    <td>@q.Title</td>
-                                    <td>@q.DurationMinutes mins</td>
-                                    <td>
-                                        @q.TotalMarks
-                                        <small class="text-muted">(by testcases)</small>
-                                    </td>
-                                    <td>@(q.IsPublished ? "Yes" : "No")</td>
-                                    <td>@q.CreatedAt.ToLocalTime().ToString("g")</td>
-                                    <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-primary" href="/Admin/Coding/Quiz/Edit/@q.Id">Edit</a>
-
-                                        <a class="btn btn-outline-info btn-sm ms-1"
-                                           href="~/Admin/Coding/Quiz/ManageQuestions/@q.Id">Questions</a>
-
-                                        <form method="post" action="/Admin/Coding/Quiz/@(q.IsPublished ? "Unpublish" : "Publish")/@q.Id" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm @(q.IsPublished ? "btn-warning" : "btn-success")">
-                                                @(q.IsPublished ? "Unpublish" : "Publish")
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr><td colspan="6" class="text-center text-muted">No coding quizzes yet.</td></tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary me-2">
+            ← All Languages
+        </a>
+        <a asp-action="Create"
+           asp-route-language="@language"
+           class="btn btn-primary">
+            + New Quiz in @language
+        </a>
     </div>
 </div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No coding quizzes found for @language.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var q in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <!-- Header: title + status badge -->
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="card-title mb-1">@q.Title</h5>
+                                <p class="text-muted mb-1">
+                                    Duration: @q.DurationMinutes min<br />
+                                    Created: @q.CreatedAt.LocalDateTime.ToString("dd MMM yyyy, HH:mm")
+                                </p>
+                                <p class="mb-0">
+                                    <strong>Questions:</strong> @q.QuestionCount
+                                </p>
+                            </div>
+                            <div>
+                                @if (q.IsPublished)
+                                {
+                                    <span class="badge bg-success">Published</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Draft</span>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Spacer so buttons stick to bottom -->
+                        <div class="mt-auto pt-3 border-top">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <!-- Left: primary Questions button -->
+                                <a asp-action="ManageQuestions"
+                                   asp-route-id="@q.Id"
+                                   class="btn btn-outline-primary btn-sm">
+                                    Questions
+                                </a>
+
+                                <!-- Right: Edit + Publish/Unpublish + Delete -->
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a asp-action="Edit"
+                                       asp-route-id="@q.Id"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        Edit
+                                    </a>
+
+                                    @if (q.IsPublished)
+                                    {
+                                        <form asp-action="Unpublish"
+                                              asp-route-id="@q.Id"
+                                              method="post"
+                                              class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-warning btn-sm">
+                                                Unpublish
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Publish"
+                                              asp-route-id="@q.Id"
+                                              method="post"
+                                              class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                Publish
+                                            </button>
+                                        </form>
+                                    }
+
+                                    <form asp-action="Delete"
+                                          asp-route-id="@q.Id"
+                                          method="post"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this quiz?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
