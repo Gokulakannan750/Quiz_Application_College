@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Quiz_Application_College.Domain.Coding;
+using System.ComponentModel.DataAnnotations;
 
 namespace Quiz_Application_College.Domain
 {
@@ -51,6 +52,10 @@ namespace Quiz_Application_College.Domain
         // New: McqQuizFolder relationship
         public int? McqQuizFolderId { get; set; }
         public McqQuizFolder? McqQuizFolder { get; set; }
+
+        // 🔽 NEW: link to Coding folder
+        public int? CodingQuizFolderId { get; set; }
+        public CodingQuizFolder? CodingQuizFolder { get; set; }
 
     }
 }

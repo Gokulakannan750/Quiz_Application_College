@@ -29,6 +29,7 @@ namespace Quiz_Application_College.Data
         public DbSet<QuizCodingQuestion> QuizCodingQuestions => Set<QuizCodingQuestion>();
         public DbSet<Quiz_Application_College.Domain.StudentProfile> StudentProfiles { get; set; } = null!;
         public DbSet<McqQuizFolder> McqQuizFolders { get; set; } = default!;
+        public DbSet<CodingQuizFolder> CodingQuizFolders { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder b)
         {
