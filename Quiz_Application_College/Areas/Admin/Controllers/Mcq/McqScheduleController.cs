@@ -36,7 +36,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         [HttpGet("Create")]
         public async Task<IActionResult> Create()
         {
-            await PopulateQuizzes();
+            await PopulateFolders();                 // folders dropdown
+            await PopulateQuizzesForFolder(null);    // empty quiz list initially
+
             var vm = new ScheduleCreateVm
             {
                 StartAt = DateTimeOffset.Now.AddHours(1),
@@ -44,41 +46,54 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 MaxAttempts = 1,
                 Timezone = TimeZoneInfo.Local.Id
             };
-            // ✅ Return the SCHEDULE Create view with ScheduleCreateVm
+
             return View("~/Areas/Admin/Views/Mcq/Schedule/Create.cshtml", vm);
         }
 
-        // POST: /Admin/MCQ/Schedule/Create
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ScheduleCreateVm vm)
+        public async Task<IActionResult> Create(ScheduleCreateVm vm, int? folderId)
         {
-            // Normalize timezone (accepts "Asia/Kolkata" or "India Standard Time")
+            // Normalize timezone
             var tz = Quiz_Application_College.Utils.TimeHelper.NormalizeTz(
                 string.IsNullOrWhiteSpace(vm.Timezone) ? TimeZoneInfo.Local.Id : vm.Timezone!
             );
 
-            // Convert posted values to UTC for consistent storage
             var startUtc = vm.StartAt.ToUniversalTime();
             var endUtc = vm.EndAt.ToUniversalTime();
 
             if (endUtc <= startUtc)
                 ModelState.AddModelError(nameof(vm.EndAt), "End time must be after start time.");
 
+            if (vm.QuizId == Guid.Empty)
+                ModelState.AddModelError(nameof(vm.QuizId), "Please select a quiz.");
+
             if (!ModelState.IsValid)
             {
-                await PopulateQuizzes();
-                vm.Timezone = tz; // re-render with normalized tz
+                // Try to infer folder from quiz if not provided
+                if (!folderId.HasValue && vm.QuizId != Guid.Empty)
+                {
+                    var quiz = await _db.Quizzes
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(q => q.Id == vm.QuizId);
+
+                    folderId = quiz?.McqQuizFolderId;
+                }
+
+                await PopulateFolders(folderId);
+                await PopulateQuizzesForFolder(folderId, vm.QuizId);
+
+                vm.Timezone = tz;
                 return View("~/Areas/Admin/Views/Mcq/Schedule/Create.cshtml", vm);
             }
 
             var sched = new QuizSchedule
             {
                 QuizId = vm.QuizId,
-                StartAt = startUtc,          // ✅ UTC in DB
-                EndAt = endUtc,            // ✅ UTC in DB
+                StartAt = startUtc,
+                EndAt = endUtc,
                 MaxAttempts = vm.MaxAttempts <= 0 ? 1 : vm.MaxAttempts,
-                Timezone = tz                 // ✅ canonical timezone stored once
+                Timezone = tz
             };
 
             _db.QuizSchedules.Add(sched);
@@ -87,7 +102,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             TempData["Ok"] = "Schedule created.";
             return RedirectToAction(nameof(Index));
         }
-
 
         // POST: /Admin/MCQ/Schedule/Delete/{id}
         [HttpPost("Delete/{id:guid}")]
@@ -105,15 +119,48 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         }
 
         // Helpers
-        private async Task PopulateQuizzes()
+        private async Task PopulateFolders(int? selectedFolderId = null)
         {
-            var list = await _db.Quizzes
-                .Where(q => q.Type == QuizType.Mcq)   // only MCQ quizzes appear in dropdown
+            var folders = await _db.McqQuizFolders
+                .OrderBy(f => f.Name)
+                .Select(f => new { f.Id, f.Name })
+                .ToListAsync();
+
+            ViewBag.FolderOptions = new SelectList(folders, "Id", "Name", selectedFolderId);
+        }
+
+        private async Task PopulateQuizzesForFolder(int? folderId, Guid? selectedQuizId = null)
+        {
+            var query = _db.Quizzes
+                .Where(q => q.Type == QuizType.Mcq);
+
+            if (folderId.HasValue)
+                query = query.Where(q => q.McqQuizFolderId == folderId);
+
+            var list = await query
                 .OrderBy(q => q.Title)
                 .Select(q => new { q.Id, q.Title })
                 .ToListAsync();
 
-            ViewBag.QuizOptions = new SelectList(list, "Id", "Title");
+            ViewBag.QuizOptions = new SelectList(list, "Id", "Title", selectedQuizId);
+        }
+
+        // AJAX endpoint: /Admin/MCQ/Schedule/QuizzesByFolder?folderId=1
+        [HttpGet("QuizzesByFolder")]
+        public async Task<IActionResult> QuizzesByFolder(int? folderId)
+        {
+            var query = _db.Quizzes
+                .Where(q => q.Type == QuizType.Mcq);
+
+            if (folderId.HasValue)
+                query = query.Where(q => q.McqQuizFolderId == folderId);
+
+            var list = await query
+                .OrderBy(q => q.Title)
+                .Select(q => new { id = q.Id, title = q.Title })
+                .ToListAsync();
+
+            return Json(list);
         }
     }
 }

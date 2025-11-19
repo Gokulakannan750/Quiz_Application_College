@@ -48,5 +48,9 @@ namespace Quiz_Application_College.Domain
 
         public QuizType Type { get; set; } = QuizType.Mcq;
 
+        // New: McqQuizFolder relationship
+        public int? McqQuizFolderId { get; set; }
+        public McqQuizFolder? McqQuizFolder { get; set; }
+
     }
 }

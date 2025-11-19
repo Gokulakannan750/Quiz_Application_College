@@ -16,31 +16,103 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         private readonly ApplicationDbContext _db;
         public QuizController(ApplicationDbContext db) => _db = db;
 
-        // GET: /Admin/MCQ/Quiz  and /Admin/MCQ/Quiz/Index
+        // GET: /Admin/MCQ/Quiz
         [HttpGet("")]
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            var list = await _db.Quizzes
-                .Where(q => q.Type == QuizType.Mcq)
-                .OrderByDescending(q => q.CreatedAt)
+            var folders = await _db.McqQuizFolders
+                .Include(f => f.Quizzes.Where(q => q.Type == QuizType.Mcq))
+                .AsNoTracking()
+                .OrderBy(f => f.OrderNo)
+                .ThenBy(f => f.Name)
                 .ToListAsync();
 
-            return View("~/Areas/Admin/Views/Mcq/Quiz/Index.cshtml", list);
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Index.cshtml", folders);
         }
 
-        // GET: /Admin/MCQ/Quiz/Create
+        // POST: /Admin/MCQ/Quiz/CreateFolder
+        [HttpPost("CreateFolder")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateFolder(string name, string? description)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                TempData["Error"] = "Folder name is required.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var folder = new McqQuizFolder
+            {
+                Name = name.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
+            };
+
+            _db.McqQuizFolders.Add(folder);
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = "Folder created.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost("DeleteFolder/{id:int}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteFolder(int id)
+        {
+            var folder = await _db.McqQuizFolders
+                .Include(f => f.Quizzes)
+                .FirstOrDefaultAsync(f => f.Id == id);
+
+            if (folder == null)
+                return NotFound();
+
+            // If the folder has quizzes, delete them too
+            if (folder.Quizzes != null && folder.Quizzes.Any())
+            {
+                _db.Quizzes.RemoveRange(folder.Quizzes);
+            }
+
+            _db.McqQuizFolders.Remove(folder);
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = "Folder and its quizzes deleted.";
+            return RedirectToAction(nameof(Index));
+        }
+
+
+        // GET: /Admin/MCQ/Quiz/Folder/5
+        [HttpGet("Folder/{id:int}")]
+        public async Task<IActionResult> Folder(int id)
+        {
+            var folder = await _db.McqQuizFolders
+                .Include(f => f.Quizzes)
+                .FirstOrDefaultAsync(f => f.Id == id);
+
+            if (folder == null)
+                return NotFound();
+
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Folder.cshtml", folder);
+        }
+
+
+        // GET: /Admin/MCQ/Quiz/Create?folderId=5
         [HttpGet("Create")]
-        public IActionResult Create()
-            => View("~/Areas/Admin/Views/Mcq/Quiz/Create.cshtml", new QuizCreateVm());
+        public IActionResult Create(int? folderId)
+        {
+            ViewBag.FolderId = folderId;
+            return View("~/Areas/Admin/Views/Mcq/Quiz/Create.cshtml", new QuizCreateVm());
+        }
 
         // POST: /Admin/MCQ/Quiz/Create
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(QuizCreateVm vm)
+        public async Task<IActionResult> Create(QuizCreateVm vm, int? folderId)
         {
             if (!ModelState.IsValid)
+            {
+                ViewBag.FolderId = folderId;
                 return View("~/Areas/Admin/Views/Mcq/Quiz/Create.cshtml", vm);
+            }
 
             var quiz = new Quiz
             {
@@ -56,14 +128,41 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
                 ShowScoreOnSubmit = vm.ShowScoreOnSubmit,
                 IsPublished = false,
                 CreatedAt = DateTimeOffset.Now,
-
-                Type = QuizType.Mcq
+                Type = QuizType.Mcq,
+                McqQuizFolderId = folderId      // 🔴 link quiz to the folder
             };
 
             _db.Quizzes.Add(quiz);
             await _db.SaveChangesAsync();
+
+            if (folderId.HasValue)
+                return RedirectToAction(nameof(Folder), new { id = folderId.Value });
+
             return RedirectToAction(nameof(Index));
         }
+
+        // POST: /Admin/MCQ/Quiz/Delete/{id}
+        [HttpPost("Delete/{id:guid}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var quiz = await _db.Quizzes
+                .FirstOrDefaultAsync(q => q.Id == id && q.Type == QuizType.Mcq);
+
+            if (quiz == null)
+                return NotFound();
+
+            var folderId = quiz.McqQuizFolderId;
+
+            _db.Quizzes.Remove(quiz);
+            await _db.SaveChangesAsync();
+
+            if (folderId.HasValue)
+                return RedirectToAction(nameof(Folder), new { id = folderId.Value });
+
+            return RedirectToAction(nameof(Index));
+        }
+
 
         // GET: /Admin/MCQ/Quiz/Edit/{id}
         [HttpGet("Edit/{id:guid}")]
@@ -98,6 +197,10 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
             quiz.UpdatedAt = DateTimeOffset.Now;
 
             await _db.SaveChangesAsync();
+
+            if (quiz.McqQuizFolderId.HasValue)
+                return RedirectToAction(nameof(Folder), new { id = quiz.McqQuizFolderId.Value });
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -108,9 +211,14 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         {
             var quiz = await _db.Quizzes.FindAsync(id);
             if (quiz == null) return NotFound();
+
             quiz.IsPublished = true;
             quiz.UpdatedAt = DateTimeOffset.Now;
             await _db.SaveChangesAsync();
+
+            if (quiz.McqQuizFolderId.HasValue)
+                return RedirectToAction(nameof(Folder), new { id = quiz.McqQuizFolderId.Value });
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -121,11 +229,17 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
         {
             var quiz = await _db.Quizzes.FindAsync(id);
             if (quiz == null) return NotFound();
+
             quiz.IsPublished = false;
             quiz.UpdatedAt = DateTimeOffset.Now;
             await _db.SaveChangesAsync();
+
+            if (quiz.McqQuizFolderId.HasValue)
+                return RedirectToAction(nameof(Folder), new { id = quiz.McqQuizFolderId.Value });
+
             return RedirectToAction(nameof(Index));
         }
+
 
         // GET: /Admin/MCQ/Quiz/Assign/{id}
         [HttpGet("Assign/{id:guid}")]

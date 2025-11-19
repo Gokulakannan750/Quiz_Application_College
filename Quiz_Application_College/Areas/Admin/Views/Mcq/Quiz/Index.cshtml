@@ -1,64 +1,86 @@
-﻿@model IEnumerable<Quiz_Application_College.Domain.Quiz>
+﻿@model IEnumerable<Quiz_Application_College.Domain.McqQuizFolder>
 @{
-    ViewData["Title"] = "MCQ Quizzes";
+    ViewData["Title"] = "MCQ Quizzes - Folders";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">MCQ Quizzes</h2>
-        <div class="d-flex gap-2">
-            <a class="btn btn-primary" href="/Admin/MCQ/Quiz/Create">Create Quiz</a>
-            <a class="btn btn-outline-secondary" href="/Admin/MCQ">Back to MCQ Dashboard</a>
+        <h2 class="mb-0">MCQ Quiz Folders</h2>
+        <a class="btn btn-outline-secondary" href="/Admin/MCQ">Back to MCQ Dashboard</a>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form asp-action="CreateFolder" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-4">
+                    <label class="form-label">Folder Name</label>
+                    <input name="name" class="form-control" placeholder="e.g. C Programming" required />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Description (optional)</label>
+                    <input name="description" class="form-control" placeholder="Topic or notes" />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Create Folder</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Duration</th>
-                            <th>Total Marks</th>
-                            <th>Published</th>
-                            <th>Created</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model != null && Model.Any())
-                        {
-                            foreach (var q in Model)
+            @if (Model != null && Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Folder</th>
+                                <th>Description</th>
+                                <th class="text-center">Quizzes</th>
+                                <th style="width: 220px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var f in Model)
                             {
                                 <tr>
-                                    <td>@q.Title</td>
-                                    <td>@q.DurationMinutes mins</td>
-                                    <td>@q.TotalMarks</td>
-                                    <td>@(q.IsPublished ? "Yes" : "No")</td>
-                                    <td>@q.CreatedAt.ToLocalTime().ToString("g")</td>
-                                    <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-primary" href="/Admin/MCQ/Quiz/Edit/@q.Id">Edit</a>
-                                        <a class="btn btn-sm btn-outline-secondary" href="/Admin/MCQ/Quiz/Questions/@q.Id">Questions</a>
+                                    <td class="fw-semibold">@f.Name</td>
+                                    <td>@f.Description</td>
+                                    <td class="text-center">@((f.Quizzes?.Count) ?? 0)</td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="Folder" asp-route-id="@f.Id" class="btn btn-sm btn-primary">
+                                                Open
+                                            </a>
 
-                                        <form method="post" action="/Admin/MCQ/Quiz/@(q.IsPublished ? "Unpublish" : "Publish")/@q.Id" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm @(q.IsPublished ? "btn-warning" : "btn-success")">
-                                                @(q.IsPublished ? "Unpublish" : "Publish")
-                                            </button>
-                                        </form>
+                                            <form asp-action="DeleteFolder"
+                                                  asp-route-id="@f.Id"
+                                                  method="post"
+                                                  class="d-inline"
+                                                  onsubmit="return confirm('Delete this folder? All quizzes inside will also be deleted.');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-outline-danger">
+                                                    Delete
+                                                </button>
+                                            </form>
+
+                                        </div>
                                     </td>
                                 </tr>
                             }
-                        }
-                        else
-                        {
-                            <tr><td colspan="6" class="text-center text-muted">No quizzes yet.</td></tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted text-center py-4">
+                    No folders yet. Create one above to start organizing your MCQ quizzes.
+                </div>
+            }
         </div>
     </div>
 </div>

@@ -12,6 +12,7 @@
 
     <form method="post" action="/Admin/MCQ/Quiz/Create">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="folderId" value="@ViewBag.FolderId" />
         <div class="card shadow-sm">
             <div class="card-body">
 

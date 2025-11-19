@@ -1,66 +1,118 @@
 ﻿@model Quiz_Application_College.ViewModels.ScheduleCreateVm
+@using Microsoft.AspNetCore.Mvc.Rendering
+
 @{
     ViewData["Title"] = "Create MCQ Schedule";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var quizOptions = ViewBag.QuizOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var folderOptions = ViewBag.FolderOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
+    var quizOptions = ViewBag.QuizOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
 }
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">Create MCQ Schedule</h2>
-        <a class="btn btn-outline-secondary" href="/Admin/MCQ/Schedule">Back</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
     </div>
 
-    <form method="post" action="/Admin/MCQ/Schedule/Create">
-        @Html.AntiForgeryToken()
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
 
-        <div class="card shadow-sm">
-            <div class="card-body">
+                <!-- Folder + Quiz row -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Folder</label>
+                        <select id="FolderId" name="folderId" class="form-select">
+                            <option value="">-- Select Folder --</option>
+                            @foreach (var f in folderOptions)
+                            {
+                                <option value="@f.Value">@f.Text</option>
+                            }
+                        </select>
 
-                <div class="mb-3">
-                    <label class="form-label">Quiz</label>
-                    <select asp-for="QuizId" class="form-select" asp-items="quizOptions">
-                        <option value="">-- Select MCQ Quiz --</option>
-                    </select>
-                    <span asp-validation-for="QuizId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="QuizId" class="form-label">Quiz</label>
+                        <select asp-for="QuizId"
+                                class="form-select"
+                                id="QuizId"
+                                asp-items="quizOptions">
+                            <option value="">-- Select MCQ Quiz --</option>
+                        </select>
+                        <span asp-validation-for="QuizId" class="text-danger"></span>
+                    </div>
                 </div>
 
-                <div class="row g-3">
+                <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label">Start At</label>
-                        <input asp-for="StartAt" class="form-control" type="datetime-local" />
+                        <label asp-for="StartAt" class="form-label"></label>
+                        <input asp-for="StartAt" class="form-control" />
                         <span asp-validation-for="StartAt" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">End At</label>
-                        <input asp-for="EndAt" class="form-control" type="datetime-local" />
+                        <label asp-for="EndAt" class="form-label"></label>
+                        <input asp-for="EndAt" class="form-control" />
                         <span asp-validation-for="EndAt" class="text-danger"></span>
                     </div>
                 </div>
 
-                <div class="row g-3 mt-1">
+                <div class="row mb-3">
                     <div class="col-md-4">
-                        <label class="form-label">Max Attempts</label>
-                        <input asp-for="MaxAttempts" class="form-control" type="number" min="1" step="1" />
+                        <label asp-for="MaxAttempts" class="form-label"></label>
+                        <input asp-for="MaxAttempts" class="form-control" />
                         <span asp-validation-for="MaxAttempts" class="text-danger"></span>
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label">Timezone</label>
+                        <label asp-for="Timezone" class="form-label"></label>
                         <input asp-for="Timezone" class="form-control" />
-                        <small class="text-muted">e.g., @TimeZoneInfo.Local.Id</small>
+                        <span class="text-muted small">e.g., India Standard Time</span>
                         <span asp-validation-for="Timezone" class="text-danger"></span>
                     </div>
                 </div>
 
-            </div>
-            <div class="card-footer d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Create</button>
-                <a class="btn btn-outline-secondary" href="/Admin/MCQ/Schedule">Cancel</a>
-            </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                    <a asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        (function () {
+            const folderSelect = document.getElementById('FolderId');
+            const quizSelect = document.getElementById('QuizId');
+
+            function resetQuizDropdown() {
+                // Keep the first placeholder option
+                quizSelect.innerHTML = '<option value=\"\">-- Select MCQ Quiz --</option>';
+            }
+
+            folderSelect.addEventListener('change', function () {
+                const folderId = this.value;
+                resetQuizDropdown();
+
+                if (!folderId) {
+                    return;
+                }
+
+                fetch('/Admin/MCQ/Schedule/QuizzesByFolder?folderId=' + encodeURIComponent(folderId))
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(q => {
+                            const opt = document.createElement('option');
+                            opt.value = q.id;
+                            opt.textContent = q.title;
+                            quizSelect.appendChild(opt);
+                        });
+                    })
+                    .catch(err => console.error('Error loading quizzes:', err));
+            });
+        })();
+    </script>
 }
