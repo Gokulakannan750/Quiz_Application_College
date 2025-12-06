@@ -1,0 +1,109 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|e:\\tts\\web_app\\trovo tech solutions\\quiz_application\\quiz_application_college\\quiz_application_college\\quiz_application_college\\areas\\admin\\controllers\\coding\\codingquizcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|solutionrelative:quiz_application_college\\areas\\admin\\controllers\\coding\\codingquizcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|e:\\tts\\web_app\\trovo tech solutions\\quiz_application\\quiz_application_college\\quiz_application_college\\quiz_application_college\\areas\\admin\\views\\coding\\quiz\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|solutionrelative:quiz_application_college\\areas\\admin\\views\\coding\\quiz\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|e:\\tts\\web_app\\trovo tech solutions\\quiz_application\\quiz_application_college\\quiz_application_college\\quiz_application_college\\areas\\admin\\views\\coding\\quiz\\folders.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|solutionrelative:quiz_application_college\\areas\\admin\\views\\coding\\quiz\\folders.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|e:\\tts\\web_app\\trovo tech solutions\\quiz_application\\quiz_application_college\\quiz_application_college\\quiz_application_college\\areas\\admin\\views\\coding\\schedule\\create.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|solutionrelative:quiz_application_college\\areas\\admin\\views\\coding\\schedule\\create.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|e:\\tts\\web_app\\trovo tech solutions\\quiz_application\\quiz_application_college\\quiz_application_college\\quiz_application_college\\areas\\admin\\views\\coding\\quiz\\managequestions.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{1051D9ED-4BAB-44A0-A7DB-011BE55D32AA}|Quiz_Application_College\\Quiz_Application_College.csproj|solutionrelative:quiz_application_college\\areas\\admin\\views\\coding\\quiz\\managequestions.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ManageQuestions.cshtml",
+              "DocumentMoniker": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\ManageQuestions.cshtml",
+              "RelativeDocumentMoniker": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\ManageQuestions.cshtml",
+              "ToolTip": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\ManageQuestions.cshtml",
+              "RelativeToolTip": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\ManageQuestions.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAABUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-11-19T10:46:25.781Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Folders.cshtml",
+              "DocumentMoniker": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Folders.cshtml",
+              "RelativeDocumentMoniker": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Folders.cshtml",
+              "ToolTip": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Folders.cshtml",
+              "RelativeToolTip": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Folders.cshtml",
+              "ViewState": "AgIAAHMAAAAAAAAAAAAwwIsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-11-19T10:43:03.509Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Index.cshtml",
+              "RelativeDocumentMoniker": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Index.cshtml",
+              "ToolTip": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Index.cshtml",
+              "RelativeToolTip": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Quiz\\Index.cshtml",
+              "ViewState": "AgIAAGsAAAAAAAAAAAAwwIMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-11-19T10:42:53.055Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CodingQuizController.cs",
+              "DocumentMoniker": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Controllers\\Coding\\CodingQuizController.cs",
+              "RelativeDocumentMoniker": "Quiz_Application_College\\Areas\\Admin\\Controllers\\Coding\\CodingQuizController.cs",
+              "ToolTip": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Controllers\\Coding\\CodingQuizController.cs",
+              "RelativeToolTip": "Quiz_Application_College\\Areas\\Admin\\Controllers\\Coding\\CodingQuizController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAABJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-19T10:42:24.899Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Create.cshtml",
+              "DocumentMoniker": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Schedule\\Create.cshtml",
+              "RelativeDocumentMoniker": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Schedule\\Create.cshtml",
+              "ToolTip": "E:\\TTS\\Web_App\\Trovo Tech Solutions\\Quiz_Application\\Quiz_Application_College\\Quiz_Application_College\\Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Schedule\\Create.cshtml",
+              "RelativeToolTip": "Quiz_Application_College\\Areas\\Admin\\Views\\Coding\\Schedule\\Create.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-11-19T10:25:23.842Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

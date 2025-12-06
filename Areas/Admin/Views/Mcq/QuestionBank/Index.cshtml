@@ -1,0 +1,127 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.McqQuestion>
+
+@{
+    ViewData["Title"] = "MCQ Question Bank";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">MCQ Question Bank</h2>
+        <div class="btn-group">
+            <a asp-action="Create" class="btn btn-primary">Create Question</a>
+            <a asp-action="Import" class="btn btn-outline-primary">Import (.xlsx)</a>
+            <a href="/Admin/MCQ" class="btn btn-outline-secondary">Back to MCQ Dashboard</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @{
+        // Group questions by the Excel file they came from
+        var grouped = Model
+        .GroupBy(q => string.IsNullOrWhiteSpace(q.SourceFileName)
+        ? "Manual / No file"
+        : q.SourceFileName)
+        .OrderBy(g => g.Key)
+        .ToList();
+
+        var groupIndex = 0;
+    }
+
+    @if (!grouped.Any())
+    {
+        <div class="alert alert-info">
+            No questions found. Use <strong>Create Question</strong> or <strong>Import (.xlsx)</strong> to add questions.
+        </div>
+    }
+    else
+    {
+        @foreach (var group in grouped)
+        {
+            var groupId = $"qb-file-{groupIndex++}";
+
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <button type="button"
+                            class="btn btn-link p-0 text-start"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#@groupId"
+                            aria-expanded="true"
+                            aria-controls="@groupId">
+                        @group.Key
+                    </button>
+                    <small class="text-muted">
+                        @group.Count() question@(group.Count() == 1 ? "" : "s")
+                    </small>
+                </div>
+
+                <div id="@groupId" class="collapse show">
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width:45%;">Text</th>
+                                    <th style="width:10%;">Marks</th>
+                                    <th style="width:15%;">Tag</th>
+                                    <th style="width:20%;">Options</th>
+                                    <th style="width:10%;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var q in group)
+                                {
+                                    <tr>
+                                        <td>@q.Text</td>
+                                        <td>@q.Marks.ToString("0.##")</td>
+                                        <td>@q.Tag</td>
+                                        <td>
+                                            <ul class="mb-0">
+                                                @foreach (var opt in q.Options.OrderBy(o => o.Id))
+                                                {
+                                                    <li>
+                                                        @opt.Text
+                                                        @if (opt.IsCorrect)
+                                                        {
+                                                            <span class="text-success">(✓)</span>
+                                                        }
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a asp-action="Edit"
+                                                   asp-route-id="@q.Id"
+                                                   class="btn btn-outline-primary">
+                                                    Edit
+                                                </a>
+                                                <form asp-action="Delete"
+                                                      asp-route-id="@q.Id"
+                                                      method="post"
+                                                      onsubmit="return confirm('Delete this question?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-outline-danger">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

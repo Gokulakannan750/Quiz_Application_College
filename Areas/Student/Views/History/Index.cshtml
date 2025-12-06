@@ -1,0 +1,150 @@
+﻿@using Quiz_Application_College.Areas.Student.Controllers
+@model HistoryController.HistoryIndexVm
+
+@{
+    ViewData["Title"] = "Quiz History";
+    Layout = "~/Views/Shared/_Layout.cshtml"; 
+}
+
+@{
+    var mcqItems = Model.Items
+        .Where(i => string.Equals(i.QuizType, "Mcq", System.StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    var codingItems = Model.Items
+        .Where(i => string.Equals(i.QuizType, "Coding", System.StringComparison.OrdinalIgnoreCase))
+        .ToList();
+}
+
+<h2 class="mb-4">Quiz History</h2>
+
+@if (Model.Items == null || !Model.Items.Any())
+{
+    <div class="alert alert-info">
+        You haven’t completed any quizzes yet.
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center mb-3 gap-2">
+        <label for="quizTypeFilter" class="form-label mb-0"><strong>Show:</strong></label>
+        <select id="quizTypeFilter" class="form-select form-select-sm w-auto">
+            <option value="all" selected>All</option>
+            <option value="mcq">MCQ</option>
+            <option value="coding">Coding</option>
+        </select>
+    </div>
+
+    <!-- MCQ table -->
+    <div id="mcqTableWrapper" class="history-table mb-4">
+        <h5 class="mb-2">MCQ Attempts (@mcqItems.Count)</h5>
+
+        @if (!mcqItems.Any())
+        {
+            <div class="alert alert-secondary py-2 mb-0">
+                No MCQ attempts yet.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Quiz</th>
+                            <th>Started</th>
+                            <th>Submitted</th>
+                            <th>Duration (min)</th>
+                            <th>Score</th>
+                            <th>Attempt ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in mcqItems)
+                        {
+                            <tr>
+                                <td>@a.QuizTitle</td>
+                                <td>@a.StartedAt.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</td>
+                                <td>
+                                    @(a.SubmittedAt?.ToLocalTime().ToString("dd-MMM-yyyy HH:mm") ?? "-")
+                                </td>
+                                <td>@a.DurationMinutes</td>
+                                <td>@a.Score</td>
+                                <td>@a.AttemptId.ToString().Substring(0, 8)...</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- Coding table -->
+    <div id="codingTableWrapper" class="history-table mb-4">
+        <h5 class="mb-2">Coding Attempts (@codingItems.Count)</h5>
+
+        @if (!codingItems.Any())
+        {
+            <div class="alert alert-secondary py-2 mb-0">
+                No Coding quiz attempts yet.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Quiz</th>
+                            <th>Started</th>
+                            <th>Submitted</th>
+                            <th>Duration (min)</th>
+                            <th>Score</th>
+                            <th>Attempt ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in codingItems)
+                        {
+                            <tr>
+                                <td>@a.QuizTitle</td>
+                                <td>@a.StartedAt.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</td>
+                                <td>
+                                    @(a.SubmittedAt?.ToLocalTime().ToString("dd-MMM-yyyy HH:mm") ?? "-")
+                                </td>
+                                <td>@a.DurationMinutes</td>
+                                <td>@a.Score</td>
+                                <td>@a.AttemptId.ToString().Substring(0, 8)...</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <script>
+        (function () {
+            const filter = document.getElementById('quizTypeFilter');
+            const mcqWrapper = document.getElementById('mcqTableWrapper');
+            const codingWrapper = document.getElementById('codingTableWrapper');
+
+            function applyFilter() {
+                const value = filter.value;
+                if (value === 'all') {
+                    mcqWrapper.style.display = '';
+                    codingWrapper.style.display = '';
+                } else if (value === 'mcq') {
+                    mcqWrapper.style.display = '';
+                    codingWrapper.style.display = 'none';
+                } else if (value === 'coding') {
+                    mcqWrapper.style.display = 'none';
+                    codingWrapper.style.display = '';
+                }
+            }
+
+            filter.addEventListener('change', applyFilter);
+            applyFilter(); // initial
+        })();
+    </script>
+}

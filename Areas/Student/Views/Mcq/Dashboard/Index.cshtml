@@ -1,0 +1,135 @@
+﻿@using Quiz_Application_College.Areas.Student.Controllers.Mcq
+@model List<DashboardController.McqAvailableVm>
+
+@{
+    ViewData["Title"] = "MCQ — Available Quizzes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Use local time for status & display
+    var now = DateTimeOffset.Now;
+
+    // Order: Live (0) → Upcoming (1) → Finished (2)
+    var ordered = Model
+        .Select(q => new
+        {
+            Quiz = q,
+            StatusOrder =
+                (now >= q.StartAt && now <= q.EndAt) ? 0 :      // live
+                (now < q.StartAt) ? 1 :                         // upcoming
+                2                                               // finished
+        })
+        .OrderBy(x => x.StatusOrder)
+        .ThenBy(x => x.Quiz.StartAt)
+        .ThenBy(x => x.Quiz.Title)
+        .ToList();
+}
+
+<h2 class="mb-3">MCQ Quizzes</h2>
+<p class="text-muted mb-4">
+    Here are the MCQ quizzes that are currently available for you.
+</p>
+
+
+@if (!ordered.Any())
+{
+    <div class="alert alert-info">
+        You have no MCQ quizzes right now.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var item in ordered)
+        {
+            var q = item.Quiz;
+
+            var isLive = now >= q.StartAt && now <= q.EndAt;
+            var isUpcoming = now < q.StartAt;
+            var isFinished = now > q.EndAt;
+
+            string statusText;
+            string badgeClass;
+
+            if (isLive)
+            {
+                statusText = "Live";
+                badgeClass = "bg-success";
+            }
+            else if (isUpcoming)
+            {
+                statusText = "Upcoming";
+                badgeClass = "bg-info text-dark";
+            }
+            else
+            {
+                statusText = "Closed";
+                badgeClass = "bg-secondary";
+            }
+
+            var attemptsLeft = q.MaxAttempts - q.UsedAttempts;
+            if (attemptsLeft < 0) attemptsLeft = 0;
+
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="card-title mb-1">@q.Title</h5>
+                                <small class="text-muted">Duration: @q.DurationMinutes min</small>
+                            </div>
+                            <span class="badge @badgeClass">@statusText</span>
+                        </div>
+
+                        <div class="mb-2 small text-muted">
+                            <div>
+                                <strong>Starts:</strong>
+                                @q.StartAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                            </div>
+                            <div>
+                                <strong>Ends:</strong>
+                                @q.EndAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                            </div>
+                        </div>
+
+                        <div class="mb-3 small">
+                            <strong>Attempts:</strong>
+                            @q.UsedAttempts / @q.MaxAttempts
+                            @if (attemptsLeft > 0)
+                            {
+                                <span class="text-success ms-1">( @attemptsLeft left )</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger ms-1">( no attempts left )</span>
+                            }
+                        </div>
+
+                        <div class="mt-auto">
+                            @if (isLive && q.CanStart && attemptsLeft > 0)
+                            {
+                                <!-- This route matches what was working earlier -->
+                                <a href="~/Student/MCQ/Exam/Play?quizId=@q.QuizId"
+                                   class="btn btn-primary w-100">
+                                    Start quiz
+                                </a>
+                            }
+                            else if (isUpcoming)
+                            {
+                                <button class="btn btn-outline-secondary w-100" disabled>
+                                    Upcoming
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-outline-secondary w-100" disabled>
+                                    Closed
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+}
