@@ -55,14 +55,14 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ScheduleCreateVm vm, int? folderId)
         {
-            // Normalize timezone
+            // Always use IST for now
             var tz = TimeHelper.NormalizeTz("India Standard Time");
 
-            // We take their local DateTime part and convert from IST -> UTC.
-            var startUtc = TimeHelper.LocalToUtc(vm.StartAt.DateTime, tz);
-            var endUtc = TimeHelper.LocalToUtc(vm.EndAt.DateTime, tz);
+            // Keep the local IST values as-is (no UTC conversion)
+            var startLocal = vm.StartAt;
+            var endLocal = vm.EndAt;
 
-            if (endUtc <= startUtc)
+            if (endLocal <= startLocal)
                 ModelState.AddModelError(nameof(vm.EndAt), "End time must be after start time.");
 
             if (vm.QuizId == Guid.Empty)
@@ -90,8 +90,8 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             var sched = new QuizSchedule
             {
                 QuizId = vm.QuizId,
-                StartAt = startUtc,
-                EndAt = endUtc,
+                StartAt = startLocal,
+                EndAt = endLocal,
                 MaxAttempts = vm.MaxAttempts <= 0 ? 1 : vm.MaxAttempts,
                 Timezone = tz
             };
