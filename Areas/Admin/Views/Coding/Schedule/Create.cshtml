@@ -47,13 +47,21 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label asp-for="StartAt" class="form-label"></label>
-                        <input asp-for="StartAt" class="form-control" />
+                        <input asp-for="StartAt"
+                               class="form-control"
+                               asp-format="{0:yyyy-MM-dd HH:mm:ss}" />
                         <span asp-validation-for="StartAt" class="text-danger"></span>
+                        <small class="text-muted">Format: yyyy-MM-dd HH:mm:ss (IST)</small>
                     </div>
+
                     <div class="col-md-6">
+
                         <label asp-for="EndAt" class="form-label"></label>
-                        <input asp-for="EndAt" class="form-control" />
+                        <input asp-for="EndAt"
+                               class="form-control"
+                               asp-format="{0:yyyy-MM-dd HH:mm:ss}" />
                         <span asp-validation-for="EndAt" class="text-danger"></span>
+                        <small class="text-muted">Format: yyyy-MM-dd HH:mm:ss (IST)</small>
                     </div>
                 </div>
 

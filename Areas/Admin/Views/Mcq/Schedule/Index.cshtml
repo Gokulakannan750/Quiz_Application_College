@@ -1,4 +1,6 @@
 ﻿@model IEnumerable<Quiz_Application_College.Domain.QuizSchedule>
+@using Quiz_Application_College.Utils
+
 @{
     ViewData["Title"] = "MCQ Schedules";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -39,8 +41,8 @@
                             {
                                 <tr>
                                     <td>@s.Quiz?.Title</td>
-                                    <td>@s.StartAt</td>
-                                    <td>@s.EndAt</td>
+                                    <td>@TimeHelper.Localize(s.StartAt, s.Timezone).ToString("dd-MM-yyyy HH:mm")</td>
+                                    <td>@TimeHelper.Localize(s.EndAt, s.Timezone).ToString("dd-MM-yyyy HH:mm")</td>
                                     <td>@s.MaxAttempts</td>
                                     <td>@s.Timezone</td>
                                     <td class="text-end">
