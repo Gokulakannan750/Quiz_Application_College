@@ -77,7 +77,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 return BadRequest("Quiz not found.");
 
             var endAt = attempt.StartedAt + TimeSpan.FromMinutes(quiz.DurationMinutes);
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
 
             if (now > endAt)
             {
@@ -135,7 +135,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 });
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
 
             // Check student is allowed to access this coding quiz now
             var allowed = await (from e in _db.Enrollments
@@ -346,7 +346,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             var spid = Spid();
             if (spid == Guid.Empty) return null;
 
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
             var key = StudentAttemptKey(spid);
 
             // Enrollment + schedule + quiz type = Coding

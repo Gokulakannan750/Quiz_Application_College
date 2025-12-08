@@ -74,7 +74,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             var spid = Spid();
             if (spid == Guid.Empty) return null;
 
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
 
             // Validate enrollment + schedule + type
             var allowed = await (from e in _db.Enrollments
@@ -159,7 +159,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             if (spid == Guid.Empty) return false;
 
             var key = StudentAttemptKey(spid);
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
 
             // MaxAttempts from the active schedule window
             var maxAttempts = await _db.QuizSchedules
@@ -193,7 +193,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 return existing;
 
             // No active attempt yet → create a new one that starts now
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
 
             var startIp = HttpContext.Connection.RemoteIpAddress?.ToString();
             var startUa = Request.Headers["User-Agent"].ToString();
@@ -229,7 +229,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 .OrderByDescending(a => a.StartedAt)
                 .FirstOrDefaultAsync();
 
-            var now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.Now;
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var ua = Request.Headers["User-Agent"].ToString();
 
