@@ -1,0 +1,139 @@
+﻿@model IEnumerable<Quiz_Application_College.Domain.Coding.CodingQuizFolder>
+@using Quiz_Application_College.Domain
+
+@{
+    ViewData["Title"] = "Coding Quiz Folders";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .folder-card {
+        border-radius: 0.9rem;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+        .folder-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.14);
+        }
+
+    .folder-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #ffffff;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        margin-right: 0.75rem;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">Coding Quiz Languages</h2>
+            <small class="text-muted">Organise coding quizzes by programming language or topic.</small>
+        </div>
+        <a class="btn btn-outline-secondary" href="/Admin/Coding">Back to Coding Dashboard</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3">
+
+        <!-- Create new folder card -->
+        <div class="col-12 col-md-4 col-lg-3">
+            <div class="card h-100 shadow-sm border-dashed folder-card">
+                <div class="card-body">
+                    <h5 class="card-title">Create New Folder</h5>
+                    <form asp-action="CreateFolder" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-2">
+                            <input name="name"
+                                   class="form-control"
+                                   placeholder="e.g. Python"
+                                   required />
+                        </div>
+                        <div class="mb-3">
+                            <input name="description"
+                                   class="form-control"
+                                   placeholder="Description (optional)" />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Create Folder</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Existing folders -->
+        @if (Model != null && Model.Any())
+        {
+            @foreach (var f in Model)
+            {
+                var quizCount = (f.Quizzes?.Count(q => q.Type == QuizType.Coding)) ?? 0;
+                var publishedCount = (f.Quizzes?.Count(q => q.Type == QuizType.Coding && q.IsPublished)) ?? 0;
+                var firstLetter = string.IsNullOrWhiteSpace(f.Name)
+                ? "?"
+                : f.Name.Trim()[0].ToString().ToUpperInvariant();
+
+                <div class="col-12 col-md-4 col-lg-3">
+                    <div class="card h-100 shadow-sm folder-card">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="folder-avatar">@firstLetter</div>
+                                <div>
+                                    <h5 class="card-title mb-0">@f.Name</h5>
+                                    @if (!string.IsNullOrWhiteSpace(f.Description))
+                                    {
+                                        <div class="text-muted small">@f.Description</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="text-muted small mb-3">
+                                <strong>Quizzes:</strong> @quizCount |
+                                <strong>Published:</strong> @publishedCount
+                            </div>
+
+                            <div class="mt-auto d-flex gap-2">
+                                <a asp-action="Folder"
+                                   asp-route-id="@f.Id"
+                                   class="btn btn-primary flex-grow-1">
+                                    Open
+                                </a>
+
+                                <form asp-action="DeleteFolder"
+                                      asp-route-id="@f.Id"
+                                      method="post"
+                                      onsubmit="return confirm('Delete this folder and all its quizzes?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-info mb-0">
+                    No folders yet. Use <strong>Create New Folder</strong> to get started.
+                </div>
+            </div>
+        }
+    </div>
+</div>

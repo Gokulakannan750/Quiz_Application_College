@@ -1,0 +1,102 @@
+﻿@model Quiz_Application_College.Domain.Quiz
+
+@{
+    ViewData["Title"] = "Edit MCQ Quiz";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h2 class="mb-4">Edit MCQ Quiz</h2>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <div class="form-group mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label asp-for="DurationMinutes" class="form-label"></label>
+                        <input asp-for="DurationMinutes" class="form-control" />
+                        <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label asp-for="TotalMarks" class="form-label"></label>
+                        <!-- READ-ONLY: total is calculated from questions -->
+                        <input asp-for="TotalMarks" class="form-control" readonly />
+                        <small class="form-text text-muted">
+                            Total marks are automatically calculated from the marks of the questions linked to this quiz.
+                        </small>
+                        <span asp-validation-for="TotalMarks" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="form-check mb-3">
+                <input asp-for="EnableNegativeMarking" class="form-check-input" />
+                <label asp-for="EnableNegativeMarking" class="form-check-label"></label>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="NegativeMarkPerWrong" class="form-label"></label>
+                <input asp-for="NegativeMarkPerWrong" class="form-control" />
+                <span asp-validation-for="NegativeMarkPerWrong" class="text-danger"></span>
+            </div>
+
+            <hr />
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input asp-for="ShuffleQuestions" class="form-check-input" />
+                        <label asp-for="ShuffleQuestions" class="form-check-label"></label>
+                    </div>
+                    <div class="form-check">
+                        <input asp-for="ShuffleOptions" class="form-check-input" />
+                        <label asp-for="ShuffleOptions" class="form-check-label"></label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input asp-for="ShowReviewOnSubmit" class="form-check-input" />
+                        <label asp-for="ShowReviewOnSubmit" class="form-check-label"></label>
+                    </div>
+                    <div class="form-check">
+                        <input asp-for="ShowScoreOnSubmit" class="form-check-input" />
+                        <label asp-for="ShowScoreOnSubmit" class="form-check-label"></label>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card-footer d-flex justify-content-between">
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
