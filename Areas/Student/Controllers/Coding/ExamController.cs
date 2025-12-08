@@ -125,7 +125,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Run(Guid quizId, string code, string language)
         {
-
             var spid = Spid();
             if (spid == Guid.Empty)
             {
@@ -215,6 +214,11 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
             var runCases = new List<RunCase>();
 
+            int totalWeight = 0;
+            int passedWeight = 0;
+            int totalCount = 0;
+            int passedCount = 0;
+
             foreach (var tc in allCases)
             {
                 var req = new CodeRunRequest
@@ -239,16 +243,16 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                     });
                 }
 
-                // For hidden testcases: evaluate but DO NOT show details
-                var inputForStudent = tc.IsHidden ? "" : tc.Input;
-                var expectedForStudent = tc.IsHidden ? "" : tc.ExpectedOutput;
-                var actualForStudent = tc.IsHidden ? "" : result.Stdout;
-
                 var passed = result.Succeeded &&
                              string.Equals(
                                  result.Stdout?.TrimEnd(),
                                  tc.ExpectedOutput?.TrimEnd(),
                                  StringComparison.Ordinal);
+
+                // For hidden testcases: evaluate but DO NOT show details
+                var inputForStudent = tc.IsHidden ? "" : tc.Input;
+                var expectedForStudent = tc.IsHidden ? "" : tc.ExpectedOutput;
+                var actualForStudent = tc.IsHidden ? "" : result.Stdout;
 
                 runCases.Add(new RunCase
                 {
@@ -258,6 +262,71 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                     Passed = passed,
                     IsHidden = tc.IsHidden
                 });
+
+                // ----- scoring accumulation -----
+                var w = tc.Weight <= 0 ? 1 : tc.Weight;
+                totalWeight += w;
+                totalCount++;
+
+                if (passed)
+                {
+                    passedWeight += w;
+                    passedCount++;
+                }
+            }
+
+            // ----- compute marks from testcases -----
+            decimal marks = 0m;
+            if (totalWeight > 0)
+            {
+                var maxMarks = cq.MaxMarks; // from CodeQuestion.MaxMarks
+                marks = maxMarks * passedWeight / totalWeight;
+                marks = Math.Round(marks, 2);
+            }
+
+            // ----- save run details into AttemptCodeItem + update Attempt score -----
+            var key = StudentAttemptKey(spid);
+
+            // 1) Get the current active (or latest) attempt for this student + quiz
+            var attempt = await _db.Attempts
+                .Where(a => a.QuizId == quizId && a.UserId == key)
+                .OrderByDescending(a => a.StartedAt)
+                .FirstOrDefaultAsync();
+
+            if (attempt != null)
+            {
+                // 2) Find or create AttemptCodeItem for this Attempt + CodeQuestion
+                var codeItem = await _db.AttemptCodeItems
+                    .FirstOrDefaultAsync(x => x.AttemptId == attempt.Id && x.CodeQuestionId == cq.Id);
+
+                if (codeItem == null)
+                {
+                    codeItem = new AttemptCodeItem
+                    {
+                        Id = Guid.NewGuid(),
+                        AttemptId = attempt.Id,
+                        CodeQuestionId = cq.Id
+                    };
+                    _db.AttemptCodeItems.Add(codeItem);
+                }
+
+                // 3) Store last run details
+                codeItem.Language = language;
+                codeItem.SourceCode = code;
+                codeItem.PassedCount = passedCount;
+                codeItem.TotalCount = totalCount;
+                codeItem.MarksAwarded = marks;
+                codeItem.LastRunAt = now;
+
+                await _db.SaveChangesAsync();
+
+                // 4) Recompute total score for this attempt
+                var totalMarks = await _db.AttemptCodeItems
+                    .Where(x => x.AttemptId == attempt.Id)
+                    .SumAsync(x => x.MarksAwarded);
+
+                attempt.Score = totalMarks;
+                await _db.SaveChangesAsync();
             }
 
             return Json(new RunResponse
@@ -265,9 +334,9 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
                 Success = true,
                 Message = "Code executed on all testcases (public + hidden).",
                 Cases = runCases
+                // If you want, you can add Score = marks to RunResponse later for UI display
             });
         }
-
 
         // ========================
         // Helper: build VM and enforce timer
@@ -320,19 +389,28 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
                 var startedAt = now;
 
+                // Build device fingerprint exactly like MCQ: IP + '|' + UserAgent
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var ua = Request.Headers["User-Agent"].ToString();
+                var fingerprint = $"{ip}|{ua}";
+
                 activeAttempt = new Attempt
                 {
                     Id = Guid.NewGuid(),
                     QuizId = quizId,
                     UserId = key,
                     StartedAt = startedAt,
-                    StartIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    StartUserAgent = Request.Headers["User-Agent"].ToString()
+
+                    StartIpAddress = ip,
+                    StartUserAgent = ua,
+
+                    DeviceFingerprint = fingerprint
                 };
 
                 _db.Attempts.Add(activeAttempt);
                 await _db.SaveChangesAsync();
             }
+
 
 
             // Compute remaining time based on StartedAt

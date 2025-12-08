@@ -1,51 +1,131 @@
-﻿@model List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+﻿@using Quiz_Application_College.Areas.Admin.Controllers
+@model ReportsController.ReportsIndexVm
+
 @{
     ViewData["Title"] = "Reports";
 }
 
-<div class="container mt-3">
-    <h2>Reports</h2>
+<h2 class="mb-4">Reports</h2>
 
-    <div class="row g-3 mt-1">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Download marks by quiz</h5>
-                    <form method="get" asp-area="Admin" asp-controller="Reports" asp-action="AttemptsByQuizXlsx" class="row g-2">
-                        <div class="col-9">
-                            <select name="quizId" class="form-select" required>
-                                <option value="">-- Choose a quiz --</option>
-                                @foreach (var q in Model)
-                                {
-                                    <option value="@q.Value">@q.Text</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-3">
-                            <button type="submit" class="btn btn-primary w-100">Download</button>
-                        </div>
-                    </form>
-                    <div class="small text-muted mt-2">
-                        Exports student email, start/submitted time, and total score for the chosen quiz.
-                    </div>
+<form asp-action="Index" method="get" class="mb-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">College</label>
+                    <select class="form-select" asp-for="SelectedCollege" asp-items="Model.CollegeOptions"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Department</label>
+                    <select class="form-select" asp-for="SelectedDepartment" asp-items="Model.DepartmentOptions"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input class="form-control" asp-for="Search" placeholder="name / roll / email" />
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Bulk exports (all quizzes)</h5>
-                    <a class="btn btn-outline-secondary me-2"
-                       asp-area="Admin" asp-controller="Reports" asp-action="AttemptsXlsx">
-                        All Attempts.xlsx
-                    </a>
-                    <a class="btn btn-outline-secondary"
-                       asp-area="Admin" asp-controller="Reports" asp-action="EnrollmentsXlsx">
-                        All Enrollments.xlsx
-                    </a>
-                </div>
+            <div class="mt-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+                <a asp-action="Download"
+                   asp-route-college="@Model.SelectedCollege"
+                   asp-route-department="@Model.SelectedDepartment"
+                   asp-route-search="@Model.Search"
+                   class="btn btn-success">
+                    Download Excel
+                </a>
             </div>
         </div>
+    </div>
+</form>
+
+<!-- MCQ table -->
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>MCQ – Students (@Model.McqRows.Count)</strong>
+    </div>
+    <div class="card-body">
+        @if (Model.McqRows.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Register No</th>
+                            <th>Email</th>
+                            <th>College</th>
+                            <th>Department</th>
+                            <th class="text-end">Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.McqRows)
+                        {
+                            <tr>
+                                <td>@r.StudentName</td>
+                                <td>@r.RegisterNumber</td>
+                                <td>@r.Email</td>
+                                <td>@r.College</td>
+                                <td>@r.Department</td>
+                                <td class="text-end">@r.TotalMarks</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">
+                No MCQ attempts for the selected filters.
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Coding table -->
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Coding – Students (@Model.CodingRows.Count)</strong>
+    </div>
+    <div class="card-body">
+        @if (Model.CodingRows.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Register No</th>
+                            <th>Email</th>
+                            <th>College</th>
+                            <th>Department</th>
+                            <th class="text-end">Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.CodingRows)
+                        {
+                            <tr>
+                                <td>@r.StudentName</td>
+                                <td>@r.RegisterNumber</td>
+                                <td>@r.Email</td>
+                                <td>@r.College</td>
+                                <td>@r.Department</td>
+                                <td class="text-end">@r.TotalMarks</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">
+                No Coding attempts for the selected filters.
+            </div>
+        }
     </div>
 </div>

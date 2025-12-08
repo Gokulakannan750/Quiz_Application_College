@@ -3,93 +3,117 @@
 
 @{
     ViewData["Title"] = "Create Coding Schedule";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var folderOptions = ViewBag.FolderOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
+    var quizOptions = ViewBag.QuizOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Create Coding Schedule</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
-</div>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Create CODING Schedule</h2>
+        <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
+    </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form asp-action="Create" method="post">
-            @Html.AntiForgeryToken()
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
 
-            <!-- Programming Language -->
-            <div class="mb-3">
-                <label asp-for="ProgrammingLanguage" class="form-label">Programming Language</label>
-                <select asp-for="ProgrammingLanguage"
-                        asp-items="(SelectList)ViewBag.LanguageOptions"
-                        class="form-select"
-                        id="ProgrammingLanguage">
-                    <option value="">-- Select Programming Language --</option>
-                </select>
-                <span asp-validation-for="ProgrammingLanguage" class="text-danger"></span>
-            </div>
+                <!-- Folder + Quiz row -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Folder</label>
+                        <select id="FolderId" name="folderId" class="form-select">
+                            <option value="">-- Select Folder --</option>
+                            @foreach (var f in folderOptions)
+                            {
+                                <option value="@f.Value">@f.Text</option>
+                            }
+                        </select>
 
-            <!-- Quiz (filtered by language) -->
-            <div class="mb-3">
-                <label asp-for="QuizId" class="form-label">Quiz</label>
-                <select asp-for="QuizId"
-                        asp-items="(SelectList)ViewBag.QuizOptions"
-                        class="form-select"
-                        id="QuizId">
-                    <option value="">-- Select Coding Quiz --</option>
-                </select>
-                <span asp-validation-for="QuizId" class="text-danger"></span>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label asp-for="StartAt" class="form-label">Start At</label>
-                    <input asp-for="StartAt" class="form-control" />
-                    <span asp-validation-for="StartAt" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="QuizId" class="form-label">Quiz</label>
+                        <select asp-for="QuizId"
+                                class="form-select"
+                                id="QuizId"
+                                asp-items="quizOptions">
+                            <option value="">-- Select Coding Quiz --</option>
+                        </select>
+                        <span asp-validation-for="QuizId" class="text-danger"></span>
+                    </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label asp-for="EndAt" class="form-label">End At</label>
-                    <input asp-for="EndAt" class="form-control" />
-                    <span asp-validation-for="EndAt" class="text-danger"></span>
-                </div>
-            </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label asp-for="MaxAttempts" class="form-label">Max Attempts</label>
-                    <input asp-for="MaxAttempts" class="form-control" />
-                    <span asp-validation-for="MaxAttempts" class="text-danger"></span>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label asp-for="StartAt" class="form-label"></label>
+                        <input asp-for="StartAt" class="form-control" />
+                        <span asp-validation-for="StartAt" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="EndAt" class="form-label"></label>
+                        <input asp-for="EndAt" class="form-control" />
+                        <span asp-validation-for="EndAt" class="text-danger"></span>
+                    </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label asp-for="Timezone" class="form-label">Timezone</label>
-                    <input asp-for="Timezone" class="form-control" placeholder="e.g., India Standard Time" />
-                    <span asp-validation-for="Timezone" class="text-danger"></span>
-                    <small class="text-muted">e.g., India Standard Time</small>
-                </div>
-            </div>
 
-            <div class="mt-3">
-                <button type="submit" class="btn btn-primary">Create</button>
-                <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
-            </div>
-        </form>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label asp-for="MaxAttempts" class="form-label"></label>
+                        <input asp-for="MaxAttempts" class="form-control" />
+                        <span asp-validation-for="MaxAttempts" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-8">
+                        <label asp-for="Timezone" class="form-label"></label>
+                        <input asp-for="Timezone" class="form-control" />
+                        <span class="text-muted small">e.g., India Standard Time</span>
+                        <span asp-validation-for="Timezone" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                    <a asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 
     <script>
-        // When language changes, reload page with ?language=XYZ to filter quizzes
         (function () {
-            var ddlLang = document.getElementById('ProgrammingLanguage');
-            if (!ddlLang) return;
+            const folderSelect = document.getElementById('FolderId');
+            const quizSelect = document.getElementById('QuizId');
 
-            ddlLang.addEventListener('change', function () {
-                var lang = this.value;
-                var url = '@Url.Action("Create", "CodingSchedule", new { area = "Admin" })';
-                if (lang) {
-                    url += '?language=' + encodeURIComponent(lang);
+            function resetQuizDropdown() {
+                // Keep the first placeholder option
+                quizSelect.innerHTML = '<option value=\"\">-- Select Coding Quiz --</option>';
+            }
+
+            folderSelect.addEventListener('change', function () {
+                const folderId = this.value;
+                resetQuizDropdown();
+
+                if (!folderId) {
+                    return;
                 }
-                window.location.href = url;
+
+                fetch('/Admin/Coding/Schedule/QuizzesByFolder?folderId=' + encodeURIComponent(folderId))
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(q => {
+                            const opt = document.createElement('option');
+                            opt.value = q.id;
+                            opt.textContent = q.title;
+                            quizSelect.appendChild(opt);
+                        });
+                    })
+                    .catch(err => console.error('Error loading quizzes:', err));
             });
         })();
     </script>
