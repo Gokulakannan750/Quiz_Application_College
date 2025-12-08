@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Quiz_Application_College.Data;
 using Quiz_Application_College.Domain;
+using Quiz_Application_College.Utils;
 using Quiz_Application_College.ViewModels;
 
 namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
@@ -55,12 +56,11 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         public async Task<IActionResult> Create(ScheduleCreateVm vm, int? folderId)
         {
             // Normalize timezone
-            var tz = Quiz_Application_College.Utils.TimeHelper.NormalizeTz(
-                string.IsNullOrWhiteSpace(vm.Timezone) ? TimeZoneInfo.Local.Id : vm.Timezone!
-            );
+            var tz = TimeHelper.NormalizeTz("India Standard Time");
 
-            var startUtc = vm.StartAt.ToUniversalTime();
-            var endUtc = vm.EndAt.ToUniversalTime();
+            // We take their local DateTime part and convert from IST -> UTC.
+            var startUtc = TimeHelper.LocalToUtc(vm.StartAt.DateTime, tz);
+            var endUtc = TimeHelper.LocalToUtc(vm.EndAt.DateTime, tz);
 
             if (endUtc <= startUtc)
                 ModelState.AddModelError(nameof(vm.EndAt), "End time must be after start time.");
