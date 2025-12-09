@@ -1,55 +1,211 @@
-﻿@model Quiz_Application_College.Areas.Student.Controllers.StudentPanelsVm
+﻿@using Quiz_Application_College.Areas.Student.Controllers
+@model StudentPanelsVm
+
 @{
     ViewData["Title"] = "Student Dashboard";
     Layout = "~/Views/Shared/_Layout.cshtml";
-}
-<div class="container py-5">
-    <h2 class="mb-4">@ViewData["Title"]</h2>
 
-    <div class="row g-4">
-        <!-- MCQ tile -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex justify-content-between align-items-start">
+    // Brand color picked to match TLS Quiz logo (adjust if needed)
+    var brandColor = "#ff4b5c";
+}
+
+<style>
+    .tls-dashboard-wrapper {
+        padding-top: 32px;
+        padding-bottom: 32px;
+    }
+
+    .tls-dashboard-title {
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        margin-bottom: 1.5rem;
+    }
+
+    .tls-panel-row {
+        row-gap: 1.5rem;
+    }
+
+    .tls-card {
+        border-radius: 14px;
+        border: none;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .tls-card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(255, 75, 92, 1), rgba(255, 130, 120, 1));
+        }
+
+    .tls-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .tls-card-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: 0;
+    }
+
+    .tls-card-subtitle {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .tls-stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .tls-stat-value {
+        font-weight: 600;
+        margin-left: 0.25rem;
+    }
+
+        .tls-stat-value.highlight {
+            color: @brandColor;
+        }
+
+    .btn-tls-primary {
+        background-color: @brandColor;
+        border-color: @brandColor;
+        color: #fff;
+        font-weight: 500;
+        padding-inline: 1.75rem;
+        border-radius: 999px;
+        box-shadow: 0 6px 16px rgba(255, 75, 92, 0.35);
+    }
+
+        .btn-tls-primary:hover {
+            background-color: #e63f4e;
+            border-color: #e63f4e;
+            color: #fff;
+        }
+
+    .tls-card-footer {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: #9aa0a6;
+    }
+
+    /* History card softer */
+    .tls-card-history::before {
+        background: linear-gradient(180deg, #4b7cff, #89a6ff);
+    }
+
+    @@media (max-width: 767.98px) {
+        .tls-dashboard-title
+
+    {
+        font-size: 1.5rem;
+    }
+
+    .btn-tls-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    }</style>
+
+<div class="container tls-dashboard-wrapper">
+    <h1 class="tls-dashboard-title">Student Dashboard</h1>
+
+    <div class="row tls-panel-row">
+        <!-- MCQ Dashboard card -->
+        <div class="col-12 col-lg-6">
+            <div class="tls-card p-4 h-100">
+                <div class="tls-card-header">
                     <div>
-                        <h4 class="card-title mb-2">MCQ Dashboard</h4>
-                        <div class="text-muted">
-                            <div>Available now: <strong>@Model.McqAvailableNow</strong></div>
-                            <div>Upcoming (7 days): <strong>@Model.McqUpcoming</strong></div>
+                        <h2 class="tls-card-title">MCQ Dashboard</h2>
+                        <div class="tls-card-subtitle">
+                            Practice and attend all your multiple-choice quizzes.
                         </div>
                     </div>
-                    <a class="btn btn-primary"
-                       href="/Student/MCQ">Open</a>
+                    <a href="/Student/MCQ" class="btn btn-tls-primary">
+                        Open
+                    </a>
+                </div>
+
+                <div class="mt-3">
+                    <div class="d-flex flex-column">
+                        <div class="mb-1">
+                            <span class="tls-stat-label">Available now:</span>
+                            <span class="tls-stat-value highlight">@Model.McqAvailableNow</span>
+                        </div>
+                        <div>
+                            <span class="tls-stat-label">Upcoming (7 days):</span>
+                            <span class="tls-stat-value">@Model.McqUpcoming</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tls-card-footer">
+                    MCQ schedules are based on your course enrollments and time windows set by admin.
                 </div>
             </div>
         </div>
 
-        <!-- Coding tile -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex justify-content-between align-items-start">
+        <!-- Coding Dashboard card -->
+        <div class="col-12 col-lg-6">
+            <div class="tls-card p-4 h-100">
+                <div class="tls-card-header">
                     <div>
-                        <h4 class="card-title mb-2">Coding Dashboard</h4>
-                        <div class="text-muted">
-                            <div>Available now: <strong>@Model.CodingAvailableNow</strong></div>
-                            <div>Upcoming (7 days): <strong>@Model.CodingUpcoming</strong></div>
+                        <h2 class="tls-card-title">Coding Dashboard</h2>
+                        <div class="tls-card-subtitle">
+                            Solve coding problems in multiple languages and run testcases.
                         </div>
                     </div>
-                    <a class="btn btn-secondary"
-                       href="/Student/Coding">Open</a>
+                    <a href="/Student/Coding" class="btn btn-tls-primary">
+                        Open
+                    </a>
+                </div>
+
+                <div class="mt-3">
+                    <div class="d-flex flex-column">
+                        <div class="mb-1">
+                            <span class="tls-stat-label">Available now:</span>
+                            <span class="tls-stat-value highlight">@Model.CodingAvailableNow</span>
+                        </div>
+                        <div>
+                            <span class="tls-stat-label">Upcoming (7 days):</span>
+                            <span class="tls-stat-value">@Model.CodingUpcoming</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tls-card-footer">
+                    Coding quizzes are auto-evaluated using your testcase results.
                 </div>
             </div>
         </div>
 
         <!-- History card -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body d-flex flex-column justify-content-center">
-                    <h5 class="card-title">My Quiz History</h5>
-                    <p class="text-muted">View all your past MCQ and Coding quiz attempts.</p>
-                    <a href="/Student/History" class="btn btn-outline-primary mt-2">
+        <div class="col-12 col-lg-6 mt-3">
+            <div class="tls-card tls-card-history p-4 h-100">
+                <div class="tls-card-header">
+                    <div>
+                        <h2 class="tls-card-title">My Quiz History</h2>
+                        <div class="tls-card-subtitle">
+                            Review your past MCQ and Coding quiz attempts.
+                        </div>
+                    </div>
+                    <a href="/Student/History" class="btn btn-outline-primary" style="border-radius: 999px;">
                         Open
                     </a>
+                </div>
+
+                <div class="tls-card-footer">
+                    History shows the latest attempts with scores and timestamps for each quiz.
                 </div>
             </div>
         </div>

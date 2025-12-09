@@ -1,28 +1,78 @@
 ﻿@model Quiz_Application_College.Areas.Student.Controllers.Coding.ExamController.CodingResultVm
+
 @{
-    ViewData["Title"] = "Coding — Submitted";
+    ViewData["Title"] = "Coding Result";
+    var time = TimeSpan.FromSeconds(Model.TimeTakenSeconds);
+    var percentage = Model.MaxMarks > 0 ? (Model.MarksAwarded / Model.MaxMarks) * 100m : 0m;
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="mb-0">@Model.QuizTitle</h2>
-            <div class="text-muted">Submission received</div>
-        </div>
-        <a class="btn btn-outline-secondary" href="/Student/Coding">Back to Coding Dashboard</a>
-    </div>
+<h2 class="mb-3">@Model.QuizTitle - Coding Result</h2>
 
-    <div class="alert alert-success">
-        Your code has been submitted. (Scoring to be added in the next update.)
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="mb-2"><strong>Problem:</strong> @Model.ProblemTitle</div>
-            <div class="mb-2"><strong>Language:</strong> @Model.Language</div>
-            <label class="form-label">Submitted Code</label>
-            <pre class="border rounded p-3 bg-dark text-white" style="white-space:pre-wrap">@Model.Code</pre>
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card mb-3">
+            <div class="card-header">
+                Score summary
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Marks:</strong>
+                    @Model.MarksAwarded / @Model.MaxMarks
+                    (@Math.Round(percentage, 2) %)
+                </p>
+                <p>
+                    <strong>Testcases passed:</strong>
+                    @Model.PassedCount / @Model.TotalCount
+                </p>
+                <p>
+                    <strong>Total score for this attempt:</strong>
+                    @Model.AttemptTotalScore
+                </p>
+                <p>
+                    <strong>Language:</strong> @Model.Language
+                </p>
+            </div>
         </div>
     </div>
 </div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        Problem
+    </div>
+    <div class="card-body">
+        <h5>@Model.ProblemTitle</h5>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Your code
+    </div>
+    <div class="card-body">
+        <pre><code>@Model.Code</code></pre>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            if (window.history && window.history.pushState) {
+                // Add a dummy history entry on Result page
+                window.history.pushState({ fromResult: true }, "", window.location.href);
+
+                // When user presses browser Back from Result, redirect them
+                window.addEventListener("popstate", function () {
+                    // TODO: choose where you want to send the student
+                    // Option A: Student dashboard
+                    window.location.href = '@Url.Action("Index", "Dashboard", new { area = "Student" })';
+
+                    // If you prefer to go to some other page (e.g. coding quiz list),
+                    // change the Action/Controller above accordingly.
+                });
+            }
+        })();
+    </script>
+}
+

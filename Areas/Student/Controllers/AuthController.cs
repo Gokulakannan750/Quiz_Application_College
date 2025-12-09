@@ -67,6 +67,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers
             // ALWAYS go to student dashboard after login
             return RedirectToAction("Index", "Dashboard", new { area = "Student" });
         }
+
         [HttpPost("Logout")]
         [Authorize(AuthenticationSchemes = "StudentCookie")]
         [ValidateAntiForgeryToken]
