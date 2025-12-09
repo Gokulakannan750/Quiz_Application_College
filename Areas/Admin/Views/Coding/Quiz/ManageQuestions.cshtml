@@ -1,40 +1,93 @@
 ﻿@model Quiz_Application_College.Areas.Admin.Controllers.Coding.CodingQuizController.ManageQuestionsVm
+
 @{
-    ViewData["Title"] = "Attach Coding Questions";
+    ViewData["Title"] = "Manage Coding Questions";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container py-3">
-    <div class="d-flex justify-content-between align-items-center">
-        <h3 class="mb-0">Attach Coding Questions</h3>
-        <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Back</a>
-    </div>
-    <div class="text-muted">Quiz: <strong>@Model.QuizTitle</strong></div>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Manage Coding Questions – @Model.QuizTitle</h2>
 
-    <form method="post" class="mt-3">
+        <a asp-action="Index"
+           asp-controller="CodingQuiz"
+           asp-area="Admin"
+           class="btn btn-outline-secondary">
+            Back to Coding Quizzes
+        </a>
+    </div>
+
+    <div class="alert alert-info mb-3">
+        <strong>@Model.SelectedCount</strong> question(s) selected in this quiz.
+        Total marks: <strong>@Model.SelectedTotalMarks</strong>
+    </div>
+
+    <form asp-action="ManageQuestions"
+          asp-controller="CodingQuiz"
+          asp-area="Admin"
+          asp-route-id="@Model.QuizId"
+          method="post">
+
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="QuizId" />
 
         <div class="card">
-            <div class="card-body">
-                <p class="mb-2">Tick the coding question(s) for this quiz. (Students currently see the first by order.)</p>
-                <div class="list-group">
-                    @for (int i = 0; i < Model.Items.Count; i++)
-                    {
-                        <label class="list-group-item d-flex align-items-center">
-                            <input type="checkbox" class="form-check-input me-2" asp-for="Items[i].IsSelected" />
-                            <span>@Model.Items[i].Title</span>
-                            <input type="hidden" asp-for="Items[i].Id" />
-                            <input type="hidden" asp-for="Items[i].Title" />
-                        </label>
-                    }
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Available coding questions</span>
+                <span class="text-muted small">
+                    Tick the questions you want to include in <strong>@Model.QuizTitle</strong>.
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:5%;">In quiz</th>
+                                <th style="width:45%;">Title</th>
+                                <th style="width:15%;">Total marks</th>
+                                <th style="width:15%;">Testcases</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Items != null && Model.Items.Any())
+                            {
+                                for (int i = 0; i < Model.Items.Count; i++)
+                                {
+                                    var item = Model.Items[i];
+                                    <tr class="@(item.IsSelected ? "table-success" : "")">
+                                        <td class="text-center">
+                                            <input asp-for="Items[i].IsSelected" class="form-check-input" />
+                                            <input type="hidden" asp-for="Items[i].Id" />
+                                            <input type="hidden" asp-for="Items[i].Title" />
+                                            <input type="hidden" asp-for="Items[i].MaxMarks" />
+                                            <input type="hidden" asp-for="Items[i].TestCaseCount" />
+                                        </td>
+                                        <td>@item.Title</td>
+                                        <td>@item.MaxMarks</td>
+                                        <td>@item.TestCaseCount</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-muted text-center">
+                                        No coding questions found. Create questions first.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="mt-3">
-            <button class="btn btn-primary" type="submit">Save</button>
-            <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Cancel</a>
+        <div class="mt-3 d-flex justify-content-between">
+            <div></div>
+            <button type="submit" class="btn btn-primary">
+                Save questions for this quiz
+            </button>
         </div>
     </form>
 </div>

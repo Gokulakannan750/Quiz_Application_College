@@ -39,7 +39,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         {
             var id = quizId != Guid.Empty ? quizId : posted?.QuizId ?? Guid.Empty;
 
-            // Rebuild VM (questions, title, etc.) and also enforce time
+            // Rebuild VM (questions, title, etc.) and also enforce schedule + attempts
             var vm = await BuildVmAsync(id);
             if (vm is null)
                 return BadRequest("You are not allowed to take this MCQ quiz right now or the time is over.");
@@ -66,7 +66,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         // ========= Helpers =========
 
         /// <summary>
-        /// Build the VM only if: enrolled + schedule window + attempts left + time remaining.
+        /// Build the VM only if: enrolled + schedule window + attempts left.
         /// Also: create or reuse an active Attempt for timer enforcement.
         /// </summary>
         private async Task<McqExamVm?> BuildVmAsync(Guid quizId)
@@ -103,15 +103,11 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             var examEnd = attempt.StartedAt.AddMinutes(quiz.DurationMinutes);
             var secondsLeft = (int)Math.Ceiling((examEnd - now).TotalSeconds);
 
-            if (secondsLeft <= 0)
+            // IMPORTANT: do NOT block when time is over.
+            // We just clamp at zero; the client timer will auto-submit.
+            if (secondsLeft < 0)
             {
-                // Time is over. Mark attempt as submitted if not already.
-                if (!attempt.SubmittedAt.HasValue)
-                {
-                    attempt.SubmittedAt = examEnd;
-                    await _db.SaveChangesAsync();
-                }
-                return null;
+                secondsLeft = 0;
             }
 
             // Load questions in quiz order
@@ -175,7 +171,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             return usedAttempts < maxAttempts;
         }
 
-        //  <summary>
         private async Task<Attempt?> GetOrCreateActiveAttemptAsync(Guid quizId)
         {
             var spid = Spid();
@@ -216,7 +211,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             return attempt;
         }
 
-        // </summary>
         private async Task RecordAttemptAsync(Guid quizId)
         {
             var spid = Spid();
@@ -269,7 +263,6 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
 
             await _db.SaveChangesAsync();
         }
-
 
         private static void MergeSelections(McqExamVm target, McqExamVm source)
         {
@@ -356,7 +349,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             var questionIds = vm.Items.Select(i => i.QuestionId).ToList();
             if (!questionIds.Any()) return;
 
-            // Load marks for each question (Marks might be decimal or decimal?)
+            // Load marks for each question
             var questions = await _db.McqQuestions
                 .Where(q => questionIds.Contains(q.Id))
                 .Select(q => new { q.Id, q.Marks })
@@ -387,14 +380,12 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
 
             decimal totalScore = 0m;
 
-            // NegativeMarkPerWrong might be decimal or decimal?
             decimal negative = quiz.NegativeMarkPerWrong is decimal v ? v : 0m;
             bool negativeEnabled = quiz.EnableNegativeMarking && negative > 0m;
 
             foreach (var item in vm.Items)
             {
                 marksMap.TryGetValue(item.QuestionId, out var baseMarks); // decimal
-
                 correctMap.TryGetValue(item.QuestionId, out var correctOptionId);
 
                 Guid? selectedOptionId = item.SelectedOptionId == Guid.Empty
@@ -405,7 +396,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
 
                 if (selectedOptionId.HasValue)
                 {
-                    // Correct answer → full marks for that question
+                    // Correct answer → full marks
                     if (correctOptionId.HasValue && selectedOptionId.Value == correctOptionId.Value)
                     {
                         earned = baseMarks;

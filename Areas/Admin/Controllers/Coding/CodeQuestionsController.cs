@@ -44,7 +44,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                 new CodeQuestion
                 {
                     AllowedLanguagesCsv = "python,csharp",
-                    MaxMarks = 10m,
+                    // MaxMarks will be calculated from testcase Weights
                     TestCases = new List<CodeTestCase>
                     {
                         new CodeTestCase { IsHidden = false, Weight = 1 },
@@ -56,7 +56,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         // POST: /Admin/Coding/CodeQuestions/Create
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Questions,MaxMarks,AllowedLanguagesCsv,StarterCodeJson,TestCases")] CodeQuestion model)
+        public async Task<IActionResult> Create(
+            [Bind("Title,Questions,AllowedLanguagesCsv,StarterCodeJson,TestCases")]
+            CodeQuestion model)
         {
             Normalize(model);
             var cleaned = CleanCases(model.TestCases);
@@ -65,15 +67,19 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                 ModelState.AddModelError("", "Add at least one test case (Input or Expected Output).");
             if (string.IsNullOrWhiteSpace(model.Title))
                 ModelState.AddModelError(nameof(model.Title), "Title is required.");
-            if (model.MaxMarks <= 0)
-                ModelState.AddModelError(nameof(model.MaxMarks), "MaxMarks must be greater than 0.");
+
+            // MaxMarks = sum of testcase weights
+            var totalWeight = cleaned.Sum(c => c.Weight <= 0 ? 1 : c.Weight);
+            if (totalWeight <= 0)
+                ModelState.AddModelError("", "Total marks from testcases must be greater than 0.");
+            model.MaxMarks = totalWeight;
 
             if (!ModelState.IsValid)
                 return View("~/Areas/Admin/Views/Coding/CodeQuestions/Create.cshtml", model);
 
             try
             {
-                model.TestCases = cleaned; // <-- includes IsHidden
+                model.TestCases = cleaned; // includes IsHidden and normalized Weight
                 _db.CodeQuestions.Add(model);
                 await _db.SaveChangesAsync();
                 TempData["Ok"] = "Coding question created.";
@@ -105,7 +111,10 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         // POST: /Admin/Coding/CodeQuestions/Edit/{id}
         [HttpPost("Edit/{id:guid}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("Id,Title,Questions,MaxMarks,AllowedLanguagesCsv,StarterCodeJson,TestCases")] CodeQuestion model)
+        public async Task<IActionResult> Edit(
+            Guid id,
+            [Bind("Id,Title,Questions,AllowedLanguagesCsv,StarterCodeJson,TestCases")]
+            CodeQuestion model)
         {
             var existing = await _db.CodeQuestions.Include(x => x.TestCases)
                                                   .FirstOrDefaultAsync(x => x.Id == id);
@@ -113,8 +122,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 
             if (string.IsNullOrWhiteSpace(model.Title))
                 ModelState.AddModelError(nameof(model.Title), "Title is required.");
-            if (model.MaxMarks <= 0)
-                ModelState.AddModelError(nameof(model.MaxMarks), "MaxMarks must be greater than 0.");
 
             var incoming = CleanCases(model.TestCases)
                 .Select(c => new CodeTestCase
@@ -124,20 +131,27 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                     Input = c.Input,
                     ExpectedOutput = c.ExpectedOutput,
                     Weight = c.Weight <= 0 ? 1 : c.Weight,
-                    IsHidden = c.IsHidden              // <-- preserve IsHidden
+                    IsHidden = c.IsHidden
                 })
                 .ToList();
 
             if (!incoming.Any())
                 ModelState.AddModelError("", "Add at least one test case.");
 
+            // Recalculate MaxMarks from testcase weights
+            var totalWeight = incoming.Sum(c => c.Weight);
+            if (totalWeight <= 0)
+                ModelState.AddModelError("", "Total marks from testcases must be greater than 0.");
+
             if (!ModelState.IsValid)
                 return View("~/Areas/Admin/Views/Coding/CodeQuestions/Edit.cshtml", model);
 
             existing.Title = model.Title;
             existing.Questions = model.Questions;
-            existing.MaxMarks = model.MaxMarks;
-            existing.AllowedLanguagesCsv = string.IsNullOrWhiteSpace(model.AllowedLanguagesCsv) ? "python" : model.AllowedLanguagesCsv;
+            existing.MaxMarks = totalWeight;
+            existing.AllowedLanguagesCsv = string.IsNullOrWhiteSpace(model.AllowedLanguagesCsv)
+                ? "python"
+                : model.AllowedLanguagesCsv;
             existing.StarterCodeJson = model.StarterCodeJson;
 
             // Replace children (ensures IsHidden is saved)
@@ -199,7 +213,7 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
                     Input = c.Input?.Trim() ?? "",
                     ExpectedOutput = c.ExpectedOutput?.Trim() ?? "",
                     Weight = c.Weight <= 0 ? 1 : c.Weight,
-                    IsHidden = c.IsHidden // <-- CRITICAL: preserve posted hidden flag
+                    IsHidden = c.IsHidden // preserve posted hidden flag
                 })
                 .ToList();
         }

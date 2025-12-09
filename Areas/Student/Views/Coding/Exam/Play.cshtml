@@ -13,13 +13,11 @@
             <p class="text-muted">Duration: @Model.DurationMinutes min</p>
 
             <!-- TIMER -->
-            <div id="timerBar"
-                 class="alert alert-success d-flex justify-content-between align-items-center mb-3">
-                <strong>Time remaining:</strong>
-                <span id="timerText">--:--</span>
+            <div id="timerBar" class="alert alert-success d-flex justify-content-between align-items-center">
+                <span>Time remaining:</span>
+                <span id="timerText"></span>
             </div>
 
-            <!-- Form posts back to same Coding URL -->
             <form id="examForm" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" asp-for="QuizId" />
@@ -61,9 +59,7 @@
                         }
                         else
                         {
-                            <div class="alert alert-info mb-0">
-                                No public testcases available for this problem.
-                            </div>
+                            <p class="text-muted mb-0">No public testcases provided.</p>
                         }
                     </div>
                 </div>
@@ -105,12 +101,11 @@
 
                 <!-- RUN + SUBMIT -->
                 <div class="d-flex justify-content-between mb-3">
-                    <!-- INLINE onclick so we are 100% sure it fires -->
                     <button type="button" id="btnRun" class="btn btn-secondary" onclick="runCode()">
                         Run code
                     </button>
 
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" id="btnSubmit" class="btn btn-primary" onclick="confirmAndSubmit()">
                         Submit code
                     </button>
                 </div>
@@ -120,25 +115,31 @@
                     <div class="card-header fw-bold">Run results</div>
                     <div class="card-body">
                         <div id="runStatus" class="mb-2 text-muted">
-                            Click "Run code" to test your solution on public testcases.
+                            Click "Run code" to test your solution against public testcases.
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered align-middle">
                                 <thead>
                                     <tr>
-                                        <th style="width:5%;">#</th>
-                                        <th style="width:30%;">Input</th>
-                                        <th style="width:30%;">Expected</th>
-                                        <th style="width:30%;">Actual</th>
-                                        <th style="width:5%;">Status</th>
+                                        <th style="width:7%;">#</th>
+                                        <th style="width:23%;">Input</th>
+                                        <th style="width:23%;">Expected output</th>
+                                        <th style="width:23%;">Actual output</th>
+                                        <th style="width:24%;">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody id="runBody"></tbody>
+                                <tbody id="runBody">
+                                    <tr>
+                                        <td colspan="5" class="text-muted">No runs yet.</td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
             </form>
+
         </div>
     </div>
 </div>
@@ -193,7 +194,7 @@
         })();
     </script>
 
-    <!-- MONACO EDITOR -->
+    <!-- MONACO EDITOR LOADING -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
     <script>
         (function () {
@@ -268,7 +269,7 @@
             body.append('code', code);
             body.append('language', language);
 
-            fetch(runUrl, {
+            return fetch(runUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
@@ -339,6 +340,25 @@
                 }
             });
         }
+
+        function confirmAndSubmit() {
+            var form = document.getElementById('examForm');
+            if (!form) return;
+
+            var ok = window.confirm("Are you sure you want to submit your code? Your code will be run once before submission.");
+            if (!ok) return;
+
+            var p = runCode();
+            if (p && typeof p.then === 'function') {
+                p.then(function () {
+                    form.submit();
+                }).catch(function () {
+                    // Even if Run fails (network or API error), still submit the attempt
+                    form.submit();
+                });
+            } else {
+                form.submit();
+            }
+        }
     </script>
 }
-    

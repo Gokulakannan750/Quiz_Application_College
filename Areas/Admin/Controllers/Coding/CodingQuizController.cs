@@ -74,7 +74,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 
             if (folder.Quizzes.Any())
             {
-                // remove quizzes under this folder
                 _db.Quizzes.RemoveRange(folder.Quizzes);
             }
 
@@ -268,11 +267,9 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 
             var folderId = quiz.CodingQuizFolderId;
 
-            // Remove related coding-question links
             var links = _db.QuizCodingQuestions.Where(x => x.QuizId == id);
             _db.QuizCodingQuestions.RemoveRange(links);
 
-            // Remove schedules if any
             var schedules = _db.QuizSchedules.Where(s => s.QuizId == id);
             _db.QuizSchedules.RemoveRange(schedules);
 
@@ -296,26 +293,36 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 
             if (quiz == null) return NotFound();
 
-            var attached = await _db.QuizCodingQuestions
+            // Existing links for this quiz (to know which are selected)
+            var links = await _db.QuizCodingQuestions
                 .Where(x => x.QuizId == id)
-                .Select(x => x.CodeQuestionId)
+                .OrderBy(x => x.Order)
                 .ToListAsync();
 
+            var attachedIds = links.Select(x => x.CodeQuestionId).ToHashSet();
+
             var questions = await _db.CodeQuestions
+                .Include(c => c.TestCases)
                 .OrderBy(c => c.Title)
                 .Select(c => new ManageQuestionsVm.Item
                 {
                     Id = c.Id,
                     Title = c.Title,
-                    IsSelected = attached.Contains(c.Id)
+                    MaxMarks = c.MaxMarks,
+                    TestCaseCount = c.TestCases.Count,
+                    IsSelected = attachedIds.Contains(c.Id)
                 })
                 .ToListAsync();
+
+            var selected = questions.Where(x => x.IsSelected).ToList();
 
             var vm = new ManageQuestionsVm
             {
                 QuizId = id,
                 QuizTitle = quiz.Title,
-                Items = questions
+                Items = questions,
+                SelectedCount = selected.Count,
+                SelectedTotalMarks = selected.Sum(x => x.MaxMarks)
             };
 
             return View("~/Areas/Admin/Views/Coding/Quiz/ManageQuestions.cshtml", vm);
@@ -327,33 +334,50 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
         {
             if (id != form.QuizId) return BadRequest();
 
-            var selectedIds = form.Items
+            // Load the quiz so we can update TotalMarks as well
+            var quiz = await _db.Quizzes
+                .FirstOrDefaultAsync(q => q.Id == id && q.Type == QuizType.Coding);
+
+            if (quiz == null) return NotFound();
+
+            // Items that are ticked in the UI
+            var selectedItems = form.Items
                 .Where(i => i.IsSelected)
+                .ToList();
+
+            var selectedIds = selectedItems
                 .Select(i => i.Id)
                 .ToList();
 
+            // Remove existing links
             var existing = _db.QuizCodingQuestions.Where(x => x.QuizId == id);
             _db.QuizCodingQuestions.RemoveRange(existing);
 
+            // Re-create links in order
             int order = 1;
             foreach (var qid in selectedIds)
             {
-                _db.QuizCodingQuestions.Add(
-                    new Quiz_Application_College.Domain.Coding.QuizCodingQuestion
-                    {
-                        QuizId = id,
-                        CodeQuestionId = qid,
-                        Order = order++
-                    });
+                _db.QuizCodingQuestions.Add(new QuizCodingQuestion
+                {
+                    QuizId = id,
+                    CodeQuestionId = qid,
+                    Order = order++
+                });
             }
 
+            // Recalculate quiz total marks from attached coding questions
+            // Each ManageQuestionsVm.Item.MaxMarks already comes from CodeQuestion.MaxMarks (decimal)
+            var totalMarks = selectedItems.Sum(i => i.MaxMarks);
+
+            // Quiz.TotalMarks is int, so convert explicitly.
+            // We round to nearest integer in case you ever use fractional weights.
+            quiz.TotalMarks = (int)Math.Round(totalMarks, MidpointRounding.AwayFromZero);
+
             await _db.SaveChangesAsync();
+
             TempData["Message"] = "Coding questions updated.";
 
-            var quiz = await _db.Quizzes.AsNoTracking()
-                .FirstOrDefaultAsync(q => q.Id == id && q.Type == QuizType.Coding);
-
-            if (quiz?.CodingQuizFolderId != null)
+            if (quiz.CodingQuizFolderId.HasValue)
                 return RedirectToAction(nameof(Folder), new { id = quiz.CodingQuizFolderId.Value });
 
             return RedirectToAction(nameof(Index));
@@ -368,10 +392,21 @@ namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
             public string QuizTitle { get; set; } = "";
             public List<Item> Items { get; set; } = new();
 
+            // Summary for UI
+            public int SelectedCount { get; set; }
+            public decimal SelectedTotalMarks { get; set; }
+
             public class Item
             {
                 public Guid Id { get; set; }
                 public string Title { get; set; } = "";
+
+                // Total marks of this coding question (from CodeQuestion.MaxMarks)
+                public decimal MaxMarks { get; set; }
+
+                // How many testcases belong to this question
+                public int TestCaseCount { get; set; }
+
                 public bool IsSelected { get; set; }
             }
         }

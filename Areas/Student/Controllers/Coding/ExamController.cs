@@ -97,26 +97,75 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
             await _db.SaveChangesAsync();
 
-            // Rebuild VM (question + testcases) only for display
-            var vm = await BuildVmAsync(id);
-            if (vm is null)
-                return BadRequest("You are not allowed to take this Coding quiz right now.");
+            // ----- Load coding question linked to this quiz -----
+            var codeQuestion = await (from qq in _db.QuizCodingQuestions
+                                      join c in _db.CodeQuestions on qq.CodeQuestionId equals c.Id
+                                      where qq.QuizId == id
+                                      orderby qq.Order
+                                      select c)
+                                     .AsNoTracking()
+                                     .FirstOrDefaultAsync();
 
-            // Copy submitted code + language into result
-            vm.Language = posted.Language;
-            vm.Code = posted.Code;
+            if (codeQuestion == null)
+            {
+                // FALLBACK: if quiz is not linked yet, use first CodeQuestion in DB
+                codeQuestion = await _db.CodeQuestions
+                    .AsNoTracking()
+                    .OrderBy(c => c.Title)
+                    .FirstOrDefaultAsync();
+            }
+
+            // ----- Load last evaluation details for this attempt (if any) -----
+            AttemptCodeItem? codeItem = null;
+            if (codeQuestion != null)
+            {
+                codeItem = await _db.AttemptCodeItems
+                    .AsNoTracking()
+                    .Where(x => x.AttemptId == attempt.Id && x.CodeQuestionId == codeQuestion.Id)
+                    .OrderByDescending(x => x.LastRunAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            // Fallbacks if student never ran the code
+            var language = codeItem?.Language ?? posted.Language;
+            var sourceCode = codeItem?.SourceCode ?? posted.Code;
+
+            var passedCount = codeItem?.PassedCount ?? 0;
+            var totalCount = codeItem?.TotalCount ?? 0;
+            var marksAwarded = codeItem?.MarksAwarded ?? 0m;
+            var maxMarks = codeQuestion?.MaxMarks ?? 0m;
+
+            var startedAt = attempt.StartedAt;
+            var submittedAt = attempt.SubmittedAt;
+            var timeTakenSeconds = 0;
+            if (submittedAt.HasValue)
+            {
+                timeTakenSeconds = (int)Math.Round((submittedAt.Value - startedAt).TotalSeconds);
+                if (timeTakenSeconds < 0) timeTakenSeconds = 0;
+            }
 
             var result = new CodingResultVm
             {
-                QuizId = vm.QuizId,
-                QuizTitle = vm.QuizTitle,
-                ProblemTitle = vm.ProblemTitle,
-                Language = vm.Language,
-                Code = vm.Code
+                QuizId = quiz.Id,
+                QuizTitle = quiz.Title,
+                ProblemTitle = codeQuestion?.Title ?? "Problem",
+                Language = language,
+                Code = sourceCode,
+
+                MaxMarks = maxMarks,
+                MarksAwarded = marksAwarded,
+                PassedCount = passedCount,
+                TotalCount = totalCount,
+                AttemptTotalScore = attempt.Score,
+
+                StartedAt = startedAt,
+                SubmittedAt = submittedAt,
+                TimeTakenSeconds = timeTakenSeconds
             };
 
             return View("~/Areas/Student/Views/Coding/Exam/Result.cshtml", result);
         }
+
 
         // ========================
         // POST: Run (API for "Run code" button)
@@ -506,6 +555,20 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             public string ProblemTitle { get; set; } = "";
             public string Language { get; set; } = "";
             public string Code { get; set; } = "";
+
+            // Scoring
+            public decimal MaxMarks { get; set; }
+            public decimal MarksAwarded { get; set; }
+            public int PassedCount { get; set; }
+            public int TotalCount { get; set; }
+
+            // Total score across all coding questions in this attempt
+            public decimal AttemptTotalScore { get; set; }
+
+            // Timing
+            public DateTimeOffset StartedAt { get; set; }
+            public DateTimeOffset? SubmittedAt { get; set; }
+            public int TimeTakenSeconds { get; set; }
         }
 
         // ===== API DTOs for "Run code" =====

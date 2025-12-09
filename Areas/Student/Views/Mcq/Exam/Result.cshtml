@@ -1,35 +1,138 @@
 ﻿@model Quiz_Application_College.Areas.Student.Controllers.Mcq.ExamController.McqResultVm
+
 @{
-    ViewData["Title"] = "MCQ — Result";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = Model.QuizTitle + " - MCQ Result";
+
+    double percentage = 0;
+    if (Model.Total > 0)
+    {
+        percentage = (double)Model.Correct * 100.0 / Model.Total;
+    }
+
+    // MCQ dashboard URL (route is /Student/MCQ)
+    var mcqDashboardUrl = Url.Content("/Student/MCQ");
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="mb-0">@Model.QuizTitle</h2>
-            <div class="text-muted">Your result</div>
-        </div>
-        <a class="btn btn-outline-secondary" href="/Student/MCQ">Back to MCQ Dashboard</a>
-    </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-9 mx-auto">
 
-    <div class="alert alert-success">
-        <strong>Score:</strong> @Model.Correct / @Model.Total
-    </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0">@Model.QuizTitle - MCQ Result</h2>
+                <a href="@mcqDashboardUrl"
+                   class="btn btn-outline-secondary">
+                    Back to MCQ dashboard
+                </a>
+            </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            @foreach (var it in Model.Items)
-            {
-                <div class="mb-3 pb-2 border-bottom">
-                    <div class="fw-semibold mb-1">Q@it.Number. @it.QuestionText</div>
-                    <div>
-                        <span class="badge @(it.IsCorrect ? "bg-success" : "bg-danger")">
-                            @it.SelectedText
-                        </span>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            Score summary
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1">
+                                <strong>Correct answers:</strong>
+                                @Model.Correct / @Model.Total
+                            </p>
+                            <p class="mb-0">
+                                <strong>Percentage:</strong>
+                                @percentage.ToString("0.##")%
+                            </p>
+                        </div>
                     </div>
                 </div>
-            }
+
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            Attempt details
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1">
+                                <strong>Total questions:</strong> @Model.Total
+                            </p>
+                            <p class="mb-0 text-muted">
+                                Review the table below to see which questions were correct or wrong.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    Question-wise details
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 8%;">Q#</th>
+                                    <th style="width: 52%;">Question</th>
+                                    <th style="width: 25%;">Your answer</th>
+                                    <th style="width: 15%;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Items != null && Model.Items.Any())
+                                {
+                                    foreach (var item in Model.Items)
+                                    {
+                                        var rowClass = item.IsCorrect ? "table-success" : "table-danger";
+                                        <tr class="@rowClass">
+                                            <td>@item.Number</td>
+                                            <td>@item.QuestionText</td>
+                                            <td>@item.SelectedText</td>
+                                            <td>
+                                                @if (item.IsCorrect)
+                                                {
+                                                    <span class="badge bg-success">Correct</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Wrong</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">
+                                            No question data available for this attempt.
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Prevent browser Back from going back into the exam page.
+            // Instead, send the student to the MCQ dashboard (/Student/MCQ).
+            var target = '@mcqDashboardUrl';
+
+            if (window.history && window.history.pushState) {
+                // Push current state
+                window.history.pushState({ fromMcqResult: true }, "", window.location.href);
+
+                window.addEventListener("popstate", function () {
+                    window.location.href = target;
+                });
+            }
+        })();
+    </script>
+}
