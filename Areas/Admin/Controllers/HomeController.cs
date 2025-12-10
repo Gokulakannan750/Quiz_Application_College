@@ -8,7 +8,7 @@ using Quiz_Application_College.ViewModels;
 namespace Quiz_Application_College.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Policy = "IsAdmin")]
+    [Authorize(Roles = "Admin,Trainer")]
     public class HomeController : Controller
     {
         private readonly ApplicationDbContext _db;

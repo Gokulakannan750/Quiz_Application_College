@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace Quiz_Application_College.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Policy = "IsAdmin")]
+    [Authorize(Roles = "Admin,Trainer")]
     public class ReportsController : Controller
     {
         private readonly ApplicationDbContext _db;

@@ -68,7 +68,9 @@ builder.Services.AddAuthentication()
 // Authorization policies (optional)
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("IsAdmin", p => p.RequireRole("Admin", "Faculty", "Examiner", "Moderator"));
+    // Simple, clear role policies
+    options.AddPolicy("IsAdmin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("IsTrainerOrAdmin", policy => policy.RequireRole("Admin", "Trainer"));
 });
 
 // App services

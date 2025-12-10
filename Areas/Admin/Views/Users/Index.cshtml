@@ -1,0 +1,81 @@
+﻿@using Quiz_Application_College.Areas.Admin.Controllers
+@model List<UsersController.UserListItemVm>
+
+@{
+    ViewData["Title"] = "User management";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">User management</h2>
+        <a asp-area="Admin" asp-controller="Users" asp-action="Create" class="btn btn-primary">
+            Create new user
+        </a>
+    </div>
+
+    <p class="text-muted mb-3">
+        Manage admin and trainer accounts. Only <strong>Admin</strong> users can access this page.
+    </p>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            No users found.
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 22%;">User name</th>
+                                <th style="width: 26%;">Email</th>
+                                <th style="width: 22%;">Roles</th>
+                                <th style="width: 18%;">Flags</th>
+                                <th style="width: 12%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in Model)
+                            {
+                                <tr>
+                                    <td>@u.UserName</td>
+                                    <td>@u.Email</td>
+                                    <td>@u.RolesDisplay</td>
+                                    <td>
+                                        @if (u.IsAdmin)
+                                        {
+                                            <span class="badge bg-danger me-1">Admin</span>
+                                        }
+                                        @if (u.IsTrainer)
+                                        {
+                                            <span class="badge bg-success">Trainer</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <form asp-area="Admin"
+                                              asp-controller="Users"
+                                              asp-action="Delete"
+                                              asp-route-id="@u.Id"
+                                              method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

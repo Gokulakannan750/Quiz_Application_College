@@ -164,6 +164,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcU3R1ZGVudFByb2ZpbGVzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[E:/TTS/Web_App/Trovo Tech Solutions/TTS_Projects/Quiz_Application/Quiz_Application_College/Quiz_Application_College/Areas/Admin/Views/Users/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcVXNlcnNcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[E:/TTS/Web_App/Trovo Tech Solutions/TTS_Projects/Quiz_Application/Quiz_Application_College/Quiz_Application_College/Areas/Admin/Views/Users/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcVXNlcnNcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [E:/TTS/Web_App/Trovo Tech Solutions/TTS_Projects/Quiz_Application/Quiz_Application_College/Quiz_Application_College/Areas/Admin/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcQWRtaW5cVmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 

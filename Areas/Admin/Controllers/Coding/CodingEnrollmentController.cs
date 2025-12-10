@@ -10,7 +10,7 @@ using Quiz_Application_College.ViewModels.Coding;
 namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 {
     [Area("Admin")]
-    [Authorize(Policy = "IsAdmin")]
+    [Authorize(Roles = "Admin,Trainer")]
     // All actions live under /Admin/Coding/Enrollment/...
     [Route("Admin/Coding/Enrollment")]
     public class CodingEnrollmentController : Controller

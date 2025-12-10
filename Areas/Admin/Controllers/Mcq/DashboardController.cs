@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
-    [Authorize(Policy = "IsAdmin")]
+    [Authorize(Roles = "Admin,Trainer")]
     [Route("Admin/MCQ/[controller]/[action]")]
     public class DashboardController : Controller
     {
