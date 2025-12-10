@@ -115,6 +115,15 @@
                                                     Delete
                                                 </button>
                                             </form>
+
+                                            <a asp-area="Admin"
+                                               asp-controller="QuizAnalytics"
+                                               asp-action="Quiz"
+                                               asp-route-quizId="@q.Id"
+                                               class="btn btn-sm btn-outline-info">
+                                                Analytics
+                                            </a>
+
                                         </div>
                                     </td>
                                 </tr>

@@ -25,30 +25,30 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
         }
 
         // ------------------------------------------------------------
-        // INDEX – main reports page
+        // INDEX – filter students and show MCQ / Coding marks per attempt
         // ------------------------------------------------------------
         [HttpGet]
         public async Task<IActionResult> Index(
-            string selectedCollege,
-            string selectedDepartment,
+            string selectedcollege,
+            string selecteddepartment,
             string search,
             bool onlySuspicious = false)
         {
-            var vm = await BuildViewModelAsync(selectedCollege, selectedDepartment, search, onlySuspicious);
+            var vm = await BuildViewModelAsync(selectedcollege, selecteddepartment, search, onlySuspicious);
             return View(vm);
         }
 
         // ------------------------------------------------------------
-        // DOWNLOAD – Excel export (MCQ + Coding)
+        // DOWNLOAD – same filters, Excel with two sheets: MCQ / Coding
         // ------------------------------------------------------------
         [HttpGet]
         public async Task<IActionResult> Download(
-            string selectedCollege,
-            string selectedDepartment,
+            string selectedcollege,
+            string selecteddepartment,
             string search,
             bool onlySuspicious = false)
         {
-            var vm = await BuildViewModelAsync(selectedCollege, selectedDepartment, search, onlySuspicious);
+            var vm = await BuildViewModelAsync(selectedcollege, selecteddepartment, search, onlySuspicious);
 
             using var wb = new XLWorkbook();
 
@@ -103,83 +103,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
                 ms.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "StudentReports.xlsx");
-        }
-
-        // ------------------------------------------------------------
-        // STUDENT ATTEMPTS – detail page for a single student
-        // ------------------------------------------------------------
-        [HttpGet]
-        public async Task<IActionResult> StudentAttempts(string id)
-        {
-            if (string.IsNullOrWhiteSpace(id))
-                return NotFound();
-
-            // StudentProfile.Id is stored as string in the rows
-            var student = await _db.StudentProfiles
-                .FirstOrDefaultAsync(s => s.Id.ToString() == id);
-
-            if (student == null)
-                return NotFound();
-
-            var userId = "SP:" + student.Id.ToString();
-
-            var attempts = await (from a in _db.Attempts
-                                  join q in _db.Quizzes on a.QuizId equals q.Id
-                                  where a.UserId == userId
-                                  orderby a.StartedAt descending
-                                  select new { Attempt = a, Quiz = q })
-                                  .ToListAsync();
-
-            var vm = new StudentAttemptDetailVm
-            {
-                StudentProfileId = student.Id.ToString(),
-                StudentName = student.Name,
-                RegisterNumber = student.RollNumber,
-                College = student.College,
-                Department = student.Department,
-                Attempts = new List<AttemptDetailRowVm>()
-            };
-
-            foreach (var x in attempts)
-            {
-                var a = x.Attempt;
-                var q = x.Quiz;
-
-                var score = (decimal?)a.Score ?? 0m;
-
-                var ipChanged =
-                    !string.IsNullOrWhiteSpace(a.StartIpAddress) &&
-                    !string.IsNullOrWhiteSpace(a.SubmitIpAddress) &&
-                    !string.Equals(
-                        a.StartIpAddress,
-                        a.SubmitIpAddress,
-                        StringComparison.OrdinalIgnoreCase);
-
-                var uaChanged =
-                    !string.IsNullOrWhiteSpace(a.StartUserAgent) &&
-                    !string.IsNullOrWhiteSpace(a.SubmitUserAgent) &&
-                    !string.Equals(
-                        a.StartUserAgent,
-                        a.SubmitUserAgent,
-                        StringComparison.OrdinalIgnoreCase);
-
-                vm.Attempts.Add(new AttemptDetailRowVm
-                {
-                    QuizTitle = q.Title,
-                    QuizType = q.Type == QuizType.Mcq ? "MCQ" :
-                               q.Type == QuizType.Coding ? "Coding" :
-                               q.Type.ToString(),
-                    Score = score,
-                    StartedAt = a.StartedAt,
-                    SubmittedAt = a.SubmittedAt,
-                    StartIpAddress = a.StartIpAddress,
-                    SubmitIpAddress = a.SubmitIpAddress,
-                    IpChanged = ipChanged,
-                    UserAgentChanged = uaChanged
-                });
-            }
-
-            return View(vm);
         }
 
         // ------------------------------------------------------------
@@ -342,7 +265,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
 
                     mcqRows.Add(new StudentReportRowVm
                     {
-                        StudentProfileId = s.Id.ToString(),
                         StudentName = s.Name,
                         RegisterNumber = s.RollNumber,
                         College = s.College,
@@ -377,7 +299,6 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
 
                     codingRows.Add(new StudentReportRowVm
                     {
-                        StudentProfileId = s.Id.ToString(),
                         StudentName = s.Name,
                         RegisterNumber = s.RollNumber,
                         College = s.College,
@@ -435,48 +356,20 @@ namespace Quiz_Application_College.Areas.Admin.Controllers
 
         public class StudentReportRowVm
         {
-            public string StudentProfileId { get; set; }   // for detail link
-
             public string StudentName { get; set; }
             public string RegisterNumber { get; set; }
             public string College { get; set; }
             public string Department { get; set; }
 
+            // Quiz name for this attempt
             public string QuizTitle { get; set; }
+
+            // Marks for THIS attempt (MCQ or Coding)
             public decimal TotalMarks { get; set; }
 
+            // Anti-cheat flags (not shown in table, used for filtering)
             public bool IpChanged { get; set; }
             public bool UserAgentChanged { get; set; }
         }
-
-        // Detail page VMs
-        public class StudentAttemptDetailVm
-        {
-            public string StudentProfileId { get; set; }
-            public string StudentName { get; set; }
-            public string RegisterNumber { get; set; }
-            public string College { get; set; }
-            public string Department { get; set; }
-
-            public List<AttemptDetailRowVm> Attempts { get; set; } = new();
-        }
-
-        public class AttemptDetailRowVm
-        {
-            public string QuizTitle { get; set; }
-            public string QuizType { get; set; } // MCQ / Coding
-            public decimal Score { get; set; }
-
-            // Match the Attempt entity types (DateTimeOffset)
-            public DateTimeOffset StartedAt { get; set; }
-            public DateTimeOffset? SubmittedAt { get; set; }
-
-            public string StartIpAddress { get; set; }
-            public string SubmitIpAddress { get; set; }
-
-            public bool IpChanged { get; set; }
-            public bool UserAgentChanged { get; set; }
-        }
-
     }
 }
