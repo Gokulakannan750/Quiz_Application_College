@@ -361,4 +361,109 @@
             }
         }
     </script>
+
+    <!-- ANTI-CHEATING MEASURES -->
+    <script>
+        (function () {
+            const quizId = '@Model.QuizId';    // adjust property name if needed
+            const examForm = document.getElementById('examForm');
+
+            // -------------------------------------------------
+            // 1. Tab switch detection: warn, then auto-submit
+            // -------------------------------------------------
+            let hiddenCount = 0;
+            const MAX_WARN = 1;
+            const AUTO_SUBMIT_COUNT = 2;
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    hiddenCount++;
+
+                    if (hiddenCount <= MAX_WARN) {
+                        alert(
+                            'Warning: you left the coding exam tab.\n' +
+                            (MAX_WARN - hiddenCount + 1) +
+                            ' more time(s) and the exam will be auto-submitted.'
+                        );
+                    } else if (hiddenCount === AUTO_SUBMIT_COUNT) {
+                        alert(
+                            'You left the coding exam tab multiple times.\n' +
+                            'Your code will now be submitted.'
+                        );
+                        if (examForm) {
+                            examForm.submit();
+                        }
+                    }
+                }
+            });
+
+            // -------------------------------------------------
+            // 2. Disable right-click / copy / cut / paste
+            //    in the coding editor
+            // -------------------------------------------------
+            const editor = document.getElementById('codeEditor');
+
+            if (editor) {
+                ['contextmenu', 'copy', 'cut', 'paste'].forEach(function (evt) {
+                    editor.addEventListener(evt, function (e) {
+                        e.preventDefault();
+
+                        if (evt === 'contextmenu') {
+                            alert('Right-click is disabled during the coding exam.');
+                        } else if (evt === 'paste') {
+                            alert('Pasting is disabled during the coding exam.');
+                        } else if (evt === 'copy') {
+                            alert('Copying code is disabled during the coding exam.');
+                        } else if (evt === 'cut') {
+                            alert('Cut is disabled during the coding exam.');
+                        }
+                    });
+                });
+            }
+
+            // -------------------------------------------------
+            // 3. Single-tab lock using localStorage
+            // -------------------------------------------------
+            if (quizId) {
+                const lockKey = 'quiz-lock-' + quizId;
+                const tabKey = 'quiz-tab-' + quizId;
+                const thisTabId =
+                    Date.now().toString() + '_' +
+                    Math.random().toString(36).substring(2);
+
+                sessionStorage.setItem(tabKey, thisTabId);
+
+                const existingOwner = localStorage.getItem(lockKey);
+                if (existingOwner && existingOwner !== thisTabId) {
+                    alert(
+                        'This coding quiz is already open in another tab or window.\n' +
+                        'Please continue in that tab.'
+                    );
+                    window.location.href = '/Student/Home/Index';
+                    return;
+                }
+
+                localStorage.setItem(lockKey, thisTabId);
+
+                window.addEventListener('storage', function (e) {
+                    if (e.key === lockKey &&
+                        e.newValue &&
+                        e.newValue !== thisTabId) {
+                        alert(
+                            'This coding quiz has been opened in another tab.\n' +
+                            'This attempt will be closed.'
+                        );
+                        window.location.href = '/Student/Home/Index';
+                    }
+                });
+
+                window.addEventListener('beforeunload', function () {
+                    const currentOwner = localStorage.getItem(lockKey);
+                    if (currentOwner === thisTabId) {
+                        localStorage.removeItem(lockKey);
+                    }
+                });
+            }
+        })();
+    </script>
 }
