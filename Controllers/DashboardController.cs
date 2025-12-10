@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Quiz_Application_College.Controllers
 {
-    [Authorize] // must be logged in to reach dashboard
+    [Authorize] 
     public class DashboardController : Controller
     {
         public IActionResult Index()
         {
             // Priority: Admin-like roles first, then Student
-            if (User.IsInRole("Admin") || User.IsInRole("Faculty") || User.IsInRole("Examiner"))
+            if (User.IsInRole("Admin") || User.IsInRole("Trainer"))
             {
                 return RedirectToAction("Index", "Home", new { area = "Admin" });
             }

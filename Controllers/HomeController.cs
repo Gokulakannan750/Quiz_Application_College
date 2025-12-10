@@ -16,17 +16,22 @@ namespace Quiz_Application_College.Controllers
         {
             if (User?.Identity?.IsAuthenticated == true)
             {
-                if (User.IsInRole("Admin"))
+                // Admin or Trainer ? Admin area dashboard
+                if (User.IsInRole("Admin") || User.IsInRole("Trainer"))
+                {
                     return RedirectToAction("Index", "Home", new { area = "Admin" });
+                }
 
+                // Student ? Student area dashboard
                 if (User.IsInRole("Student"))
+                {
                     return RedirectToAction("Index", "Home", new { area = "Student" });
+                }
             }
 
-            // Your public landing page (or redirect to /Identity/Account/Login)
+            // Public landing page
             return View();
         }
-
 
         public IActionResult Privacy()
         {

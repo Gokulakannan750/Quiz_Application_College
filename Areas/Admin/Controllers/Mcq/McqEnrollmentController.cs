@@ -9,8 +9,7 @@ using Quiz_Application_College.ViewModels;
 namespace Quiz_Application_College.Areas.Admin.Controllers.Mcq
 {
     [Area("Admin")]
-    [Authorize(Policy = "IsAdmin")]
-    // All MCQ enrollment URLs live under /Admin/MCQ/Enrollment/...
+    [Authorize(Roles = "Admin,Trainer")]    // All MCQ enrollment URLs live under /Admin/MCQ/Enrollment/...
     [Route("Admin/MCQ/Enrollment")]
     public class McqEnrollmentController : Controller
     {

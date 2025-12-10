@@ -298,5 +298,92 @@
             showQuestion(0);
         })();
     </script>
+
+    <!-- ANTI-CHEATING MEASURES -->
+    <script>
+        (function () {
+            const quizId = '@Model.QuizId';    // adjust property name if needed
+            const examForm = document.getElementById('examForm');
+
+            // -------------------------------------------------
+            // 1. Tab switch detection: warn, then auto-submit
+            // -------------------------------------------------
+            let hiddenCount = 0;
+            const MAX_WARN = 1;          // first and second time -> warning
+            const AUTO_SUBMIT_COUNT = 2; // third time -> auto-submit
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    hiddenCount++;
+
+                    if (hiddenCount <= MAX_WARN) {
+                        alert(
+                            'Warning: you left the quiz tab.\n' +
+                            (MAX_WARN - hiddenCount + 1) +
+                            ' more time(s) and the quiz will be auto-submitted.'
+                        );
+                    } else if (hiddenCount === AUTO_SUBMIT_COUNT) {
+                        alert(
+                            'You left the quiz tab multiple times.\n' +
+                            'Your quiz will now be auto-submitted.'
+                        );
+                        if (examForm) {
+                            examForm.submit();
+                        }
+                    }
+                }
+            });
+
+            // -------------------------------------------------
+            // 2. Single-tab lock using localStorage
+            //    (prevents same quiz open in two tabs)
+            // -------------------------------------------------
+            if (quizId) {
+                const lockKey = 'quiz-lock-' + quizId;
+                const tabKey = 'quiz-tab-' + quizId;
+                const thisTabId =
+                    Date.now().toString() + '_' +
+                    Math.random().toString(36).substring(2);
+
+                // Remember this tab id for this quiz
+                sessionStorage.setItem(tabKey, thisTabId);
+
+                // Check if another tab already owns this quiz
+                const existingOwner = localStorage.getItem(lockKey);
+                if (existingOwner && existingOwner !== thisTabId) {
+                    alert(
+                        'This quiz is already open in another tab or window.\n' +
+                        'Please continue in that tab.'
+                    );
+                    window.location.href = '/Student/Home/Index';
+                    return;
+                }
+
+                // Acquire the lock
+                localStorage.setItem(lockKey, thisTabId);
+
+                // If another tab grabs the lock while we are open, exit
+                window.addEventListener('storage', function (e) {
+                    if (e.key === lockKey &&
+                        e.newValue &&
+                        e.newValue !== thisTabId) {
+                        alert(
+                            'This quiz has been opened in another tab.\n' +
+                            'This attempt will be closed.'
+                        );
+                        window.location.href = '/Student/Home/Index';
+                    }
+                });
+
+                // Release lock when this tab is closed / refreshed
+                window.addEventListener('beforeunload', function () {
+                    const currentOwner = localStorage.getItem(lockKey);
+                    if (currentOwner === thisTabId) {
+                        localStorage.removeItem(lockKey);
+                    }
+                });
+            }
+        })();
+    </script>
 }
 

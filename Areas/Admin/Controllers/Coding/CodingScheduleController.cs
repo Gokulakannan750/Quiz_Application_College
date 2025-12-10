@@ -10,7 +10,7 @@ using Quiz_Application_College.ViewModels;
 namespace Quiz_Application_College.Areas.Admin.Controllers.Coding
 {
     [Area("Admin")]
-    [Authorize(Policy = "IsAdmin")]
+    [Authorize(Roles = "Admin,Trainer")]
     // Routes under /Admin/CodingSchedule...
     [Route("Admin/Coding/Schedule")]
     public class ScheduleController : Controller

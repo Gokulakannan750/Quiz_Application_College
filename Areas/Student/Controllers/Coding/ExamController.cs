@@ -438,7 +438,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
                 var startedAt = now;
 
-                // Build device fingerprint exactly like MCQ: IP + '|' + UserAgent
+                // Build device fingerprint: IP + '|' + UserAgent
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
                 var ua = Request.Headers["User-Agent"].ToString();
                 var fingerprint = $"{ip}|{ua}";
@@ -452,15 +452,12 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
                     StartIpAddress = ip,
                     StartUserAgent = ua,
-
                     DeviceFingerprint = fingerprint
                 };
 
                 _db.Attempts.Add(activeAttempt);
                 await _db.SaveChangesAsync();
             }
-
-
 
             // Compute remaining time based on StartedAt
             var endAt = activeAttempt.StartedAt + TimeSpan.FromMinutes(durationMinutes);
@@ -510,8 +507,9 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
             if (cq?.TestCases != null)
             {
                 vm.SampleCases = cq.TestCases
-                    .Where(t => !t.IsHidden)          // IsHidden = 0 → public
-                    .OrderBy(t => t.Weight).ThenBy(t => t.Id)
+                    .Where(t => !t.IsHidden)          // IsHidden == false → public
+                    .OrderBy(t => t.Weight)
+                    .ThenBy(t => t.Id)
                     .Select(t => new CodingExamVm.Sample
                     {
                         Input = t.Input,
@@ -522,6 +520,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Coding
 
             return vm;
         }
+
 
         // ===== VMs =====
 

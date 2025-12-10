@@ -1,0 +1,92 @@
+﻿@using Quiz_Application_College.Areas.Admin.Controllers
+@model UsersController.CreateUserVm
+
+@{
+    ViewData["Title"] = "Create user";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-7 col-xl-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h2 class="mb-3">Create user</h2>
+                    <p class="text-muted mb-4">
+                        Create a new login account and assign a role:
+                        <strong>Admin</strong> (full access) or <strong>Trainer</strong> (limited access).
+                    </p>
+
+                    <form asp-action="Create" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="UserName" class="form-label"></label>
+                            <input asp-for="UserName" class="form-control" />
+                            <span asp-validation-for="UserName" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label"></label>
+                            <input asp-for="Password" class="form-control" />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ConfirmPassword" class="form-label"></label>
+                            <input asp-for="ConfirmPassword" class="form-control" />
+                            <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="SelectedRole" class="form-label"></label>
+                            <select asp-for="SelectedRole" class="form-select">
+                                <option value="">(no role)</option>
+                                @foreach (var role in Model.AllowedRoles)
+                                {
+                                    <option value="@role">@role</option>
+                                }
+                            </select>
+                            <span asp-validation-for="SelectedRole" class="text-danger"></span>
+                            <div class="form-text">
+                                Choose <strong>Admin</strong> for full access, or <strong>Trainer</strong> for limited access.
+                                You can change this later.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-area="Admin" asp-controller="Users" asp-action="Index" class="btn btn-outline-secondary">
+                                Back to list
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Create user
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5 col-xl-6 mt-4 mt-lg-0">
+            <div class="alert alert-info">
+                <h5 class="alert-heading">About roles</h5>
+                <ul class="mb-0">
+                    <li><strong>Admin</strong> – access to all tiles in the admin dashboard.</li>
+                    <li><strong>Trainer</strong> – limited access (you decide which controllers allow Trainer).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

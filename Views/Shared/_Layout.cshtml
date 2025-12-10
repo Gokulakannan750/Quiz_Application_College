@@ -31,12 +31,14 @@
 </head>
 <body>
     @{
+
         bool isStudent = User?.Identities?.Any(i => i.IsAuthenticated && i.AuthenticationType == "StudentCookie") ?? false;
+
         bool isAdmin =
+
         (User?.IsInRole("Admin") ?? false) ||
-        (User?.IsInRole("Faculty") ?? false) ||
-        (User?.IsInRole("Examiner") ?? false) ||
-        (User?.IsInRole("Moderator") ?? false);
+
+        (User?.IsInRole("Trainer") ?? false);
 
         string studentName = User?.FindFirst(ClaimTypes.Name)?.Value ?? "Student";
         string adminName = User?.Identity?.Name ?? "Admin";
@@ -65,11 +67,11 @@
                         }
 
                         @* Admin menus when Identity is active *@
-                        @if (isAdmin && !isStudent)
+                        @if (isAdmin  && !isStudent)
                         {
                             <li class="nav-item"><a class="nav-link" asp-area="Admin" asp-controller="Home" asp-action="Index">Admin Dashboard</a></li>
-                            <li class="nav-item"><a class="nav-link" asp-area="Admin" asp-controller="Reports" asp-action="Index">Reports</a></li>
                         }
+
                     </ul>
 
                     <ul class="navbar-nav ms-auto align-items-center">
@@ -98,7 +100,7 @@
                                 </form>
                             </li>
                         }
-                        else if (isAdmin && !isStudent)
+                        else if (isAdmin  && !isStudent)
                         {
                             <li class="nav-item">
                                 <span class="navbar-text me-2">Hello, @adminName</span>
