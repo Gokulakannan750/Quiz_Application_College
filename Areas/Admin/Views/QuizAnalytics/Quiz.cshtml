@@ -1,0 +1,133 @@
+﻿@using Quiz_Application_College.Areas.Admin.Controllers
+@model QuizAnalyticsController.QuizAnalyticsVm
+
+@{
+    ViewData["Title"] = "Quiz analytics";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-3">Quiz analytics – @Model.QuizTitle</h2>
+
+    @if (Model.TotalAttempts == 0)
+    {
+        <div class="alert alert-info">
+            No submitted attempts found for this quiz yet.
+        </div>
+    }
+    else
+    {
+        <!-- Top summary cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">Total attempts</div>
+                        <div class="fs-4 fw-bold">@Model.TotalAttempts</div>
+                        <div class="small text-muted mt-1">
+                            Distinct students: @Model.DistinctStudents
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">Average score</div>
+                        <div class="fs-4 fw-bold">@Model.AverageScore</div>
+                        <div class="small text-muted mt-1">
+                            Min: @Model.MinScore | Max: @Model.MaxScore
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">Median score</div>
+                        <div class="fs-4 fw-bold">@Model.MedianScore</div>
+                        <div class="small text-muted mt-1">
+                            Duration: @Model.DurationMinutes min
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question-wise difficulty -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Question-wise performance</h5>
+
+                @if (!Model.QuestionRows.Any())
+                {
+                    <div class="alert alert-info mb-0">
+                        No question data available for this quiz.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:5%">#</th>
+                                    <th style="width:55%">Question</th>
+                                    <th class="text-end">Max marks</th>
+                                    <th class="text-end">Evaluated</th>
+                                    <th class="text-end">Correct</th>
+                                    <th class="text-end">Others</th>
+                                    <th class="text-end">Difficulty %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < Model.QuestionRows.Count; i++)
+                                {
+                                    var q = Model.QuestionRows[i];
+                                    string badgeClass;
+
+                                    if (q.DifficultyPercent <= 30)
+                                    {
+                                        // Very tough – many students wrong
+                                        badgeClass = "bg-danger";
+                                    }
+                                    else if (q.DifficultyPercent <= 60)
+                                    {
+                                        // Medium difficulty
+                                        badgeClass = "bg-warning text-dark";
+                                    }
+                                    else
+                                    {
+                                        // Easy
+                                        badgeClass = "bg-success";
+                                    }
+
+                                    <tr>
+                                        <td>@(i + 1)</td>
+                                        <td>@q.QuestionText</td>
+                                        <td class="text-end">@q.MaxMarks</td>
+                                        <td class="text-end">@q.TotalEvaluated</td>
+                                        <td class="text-end">@q.CorrectCount</td>
+                                        <td class="text-end">@q.OtherCount</td>
+                                        <td class="text-end">
+                                            <span class="badge @badgeClass">
+                                                @q.DifficultyPercent.ToString("0.0")%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="small text-muted mt-3">
+                        Difficulty % = (Correct attempts / Evaluated attempts) × 100.
+                        “Others” includes wrong answers and skipped questions.
+                    </p>
+                }
+            </div>
+        </div>
+    }
+</div>

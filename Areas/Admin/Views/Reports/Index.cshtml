@@ -103,12 +103,7 @@
                             @foreach (var row in Model.McqRows)
                             {
                                 <tr>
-                                    <td>
-                                        <a asp-action="StudentAttempts"
-                                           asp-route-id="@row.StudentProfileId">
-                                            @row.StudentName
-                                        </a>
-                                    </td>
+                                    <td>@row.StudentName</td>
                                     <td>@row.RegisterNumber</td>
                                     <td>@row.College</td>
                                     <td>@row.Department</td>
@@ -167,12 +162,7 @@
                             @foreach (var row in Model.CodingRows)
                             {
                                 <tr>
-                                    <td>
-                                        <a asp-action="StudentAttempts"
-                                           asp-route-id="@row.StudentProfileId">
-                                            @row.StudentName
-                                        </a>
-                                    </td>
+                                    <td>@row.StudentName</td>
                                     <td>@row.RegisterNumber</td>
                                     <td>@row.College</td>
                                     <td>@row.Department</td>

@@ -68,6 +68,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
         /// <summary>
         /// Build the VM only if: enrolled + schedule window + attempts left.
         /// Also: create or reuse an active Attempt for timer enforcement.
+        /// Includes per-attempt deterministic shuffle of questions/options.
         /// </summary>
         private async Task<McqExamVm?> BuildVmAsync(Guid quizId)
         {
@@ -123,7 +124,19 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 .AsNoTracking()
                 .ToListAsync();
 
-            var ordered = qids.Select(id => questions.First(x => x.Id == id)).ToList();
+            // ======== NEW: deterministic question shuffle per attempt ========
+            var orderedQuestionIds = qids;
+
+            if (quiz.ShuffleQuestions)
+            {
+                // Seed based on Attempt.Id so that order is stable per attempt
+                int seedQuestions = attempt.Id.GetHashCode();
+                orderedQuestionIds = ShuffleDeterministic(orderedQuestionIds, seedQuestions);
+            }
+
+            var orderedQuestions = orderedQuestionIds
+                .Select(id => questions.First(x => x.Id == id))
+                .ToList();
 
             var vm = new McqExamVm
             {
@@ -131,15 +144,29 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 QuizTitle = quiz.Title,
                 DurationMinutes = quiz.DurationMinutes,
                 RemainingSeconds = secondsLeft,
-                Items = ordered.Select((q, i) => new McqExamVm.Item
+                Items = orderedQuestions.Select((q, i) =>
                 {
-                    Index = i + 1,
-                    QuestionId = q.Id,
-                    Text = q.Text,
-                    Options = q.Options
+                    // Base option ordering
+                    var optionList = q.Options
                         .OrderBy(o => o.Id)
-                        .Select(o => new McqExamVm.Option { OptionId = o.Id, Text = o.Text })
-                        .ToList()
+                        .ToList();
+
+                    // ======== NEW: deterministic option shuffle per question+attempt ========
+                    if (quiz.ShuffleOptions)
+                    {
+                        int seedOptions = unchecked(attempt.Id.GetHashCode() ^ q.Id.GetHashCode());
+                        optionList = ShuffleDeterministic(optionList, seedOptions);
+                    }
+
+                    return new McqExamVm.Item
+                    {
+                        Index = i + 1,
+                        QuestionId = q.Id,
+                        Text = q.Text,
+                        Options = optionList
+                            .Select(o => new McqExamVm.Option { OptionId = o.Id, Text = o.Text })
+                            .ToList()
+                    };
                 }).ToList()
             };
 
@@ -421,7 +448,7 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
                 {
                     AttemptId = attempt.Id,
                     QuestionId = item.QuestionId,
-                    Order = item.Index,            // 1-based index
+                    Order = item.Index,            // 1-based index in *shuffled* order
                     OptionOrderJson = optionOrderJson,
                     MarksAwarded = earned
                 };
@@ -433,6 +460,26 @@ namespace Quiz_Application_College.Areas.Student.Controllers.Mcq
             attempt.Score = totalScore;
 
             await _db.SaveChangesAsync();
+        }
+
+        // ========= deterministic shuffle helper =========
+
+        /// <summary>
+        /// Fisher–Yates shuffle with a fixed seed so that the order is stable
+        /// across multiple requests for the same attempt.
+        /// </summary>
+        private static List<T> ShuffleDeterministic<T>(IList<T> source, int seed)
+        {
+            var list = source.ToList();
+            var rng = new Random(seed);
+
+            for (int i = list.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (list[i], list[j]) = (list[j], list[i]);
+            }
+
+            return list;
         }
 
         // ========= VMs =========
